@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SkillSpark</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#070707;--s1:#101010;--s2:#171717;--s3:#1e1e1e;--s4:#252525;
+  --o:#FF6200;--o2:#FF8034;--o3:#FF3D00;--og:rgba(255,98,0,.13);--og2:rgba(255,98,0,.07);
+  --t:#F2F2F2;--t2:#999;--t3:#555;
+  --b:rgba(255,255,255,.07);--b2:rgba(255,98,0,.22);
+  --r:14px;--r2:10px;--r3:7px;
+  --ff:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --nh:68px;
+}
+html,body{height:100%;overflow:hidden;background:#000;font-family:var(--fb);color:var(--t)}
+#root{height:100dvh;max-width:430px;margin:0 auto;position:relative;overflow:hidden;background:var(--bg)}
+
+/* SCREENS */
+.scr{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--nh)+16px);opacity:0;pointer-events:none;transform:translateY(8px);transition:opacity .25s var(--ease),transform .25s var(--ease);scrollbar-width:none;background:var(--bg)}
+.scr::-webkit-scrollbar{display:none}
+.scr.on{opacity:1;pointer-events:all;transform:none}
+.scr.auth,.scr.editp,.scr.chat-scr{padding-bottom:0!important}
+
+/* NAV */
+#nav{position:absolute;bottom:0;left:0;right:0;height:var(--nh);background:rgba(7,7,7,.96);backdrop-filter:blur(20px);border-top:1px solid var(--b);display:flex;align-items:center;justify-content:space-around;z-index:200;padding:0 4px 4px}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;cursor:pointer;transition:all .18s var(--ease)}
+.ni svg{width:22px;height:22px;stroke:var(--t3);fill:none;stroke-width:1.8;transition:all .18s}
+.ni span{font-size:9px;font-family:var(--ff);font-weight:700;color:var(--t3);letter-spacing:.6px;transition:all .18s}
+.ni.on svg{stroke:var(--o)}.ni.on span{color:var(--o)}
+.ni .dot{position:absolute;top:5px;right:8px;width:7px;height:7px;background:var(--o);border-radius:50%;border:2px solid var(--bg)}
+.spark-btn{width:52px;height:52px;border-radius:50%;background:var(--o);display:flex;align-items:center;justify-content:center;margin-top:-16px;box-shadow:0 0 20px var(--o),0 0 40px rgba(255,98,0,.25);cursor:pointer;transition:all .18s;flex-shrink:0;position:relative}
+.spark-btn:active{transform:scale(.9)}
+.spark-btn svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2.2}
+
+/* TOPBAR */
+.tb{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;position:sticky;top:0;z-index:100;background:rgba(7,7,7,.94);backdrop-filter:blur(18px);border-bottom:1px solid var(--b)}
+.logo{font-family:var(--ff);font-weight:800;font-size:20px;color:var(--o);letter-spacing:-.3px}
+.ib{width:38px;height:38px;border-radius:var(--r3);background:var(--s2);border:1px solid var(--b);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:all .18s}
+.ib:active{transform:scale(.9);border-color:var(--b2)}
+.ib svg{width:17px;height:17px;stroke:var(--t2);fill:none;stroke-width:2}
+
+/* CARDS / SECTIONS */
+.sh{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px}
+.sh-t{font-family:var(--ff);font-weight:700;font-size:11px;letter-spacing:1.2px;color:var(--o);display:flex;align-items:center;gap:5px}
+.sh-a{font-size:11px;color:var(--t3);cursor:pointer;font-family:var(--ff);font-weight:600}
+
+/* AUTH */
+.auth-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 80% 10%,rgba(255,98,0,.1),transparent 60%),radial-gradient(ellipse at 20% 90%,rgba(255,61,0,.07),transparent 55%)}
+.auth-inner{padding:52px 24px 40px;position:relative;z-index:1;min-height:100dvh}
+.alogo{font-family:var(--ff);font-weight:800;font-size:28px;color:var(--o);margin-bottom:4px}
+.atag{font-size:13px;color:var(--t3);margin-bottom:40px}
+.atitle{font-family:var(--ff);font-weight:800;font-size:22px;color:var(--t);line-height:1.2;margin-bottom:6px}
+.asub{font-size:13px;color:var(--t3);margin-bottom:26px}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:11px;color:var(--t3);font-family:var(--ff);font-weight:700;letter-spacing:.6px;margin-bottom:5px}
+.fi{width:100%;background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);padding:13px 14px;font-size:14px;color:var(--t);font-family:var(--fb);outline:none;transition:all .2s}
+.fi:focus{border-color:var(--o);box-shadow:0 0 0 3px var(--og)}
+.fi::placeholder{color:var(--t3)}
+.abtn{width:100%;background:var(--o);border:none;border-radius:var(--r2);padding:14px;font-family:var(--ff);font-weight:700;font-size:15px;color:#fff;cursor:pointer;margin-top:8px;letter-spacing:.4px;box-shadow:0 4px 18px rgba(255,98,0,.28);transition:all .2s}
+.abtn:active{transform:scale(.98)}
+.adiv{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--t3);font-size:11px;font-family:var(--ff)}
+.adiv::before,.adiv::after{content:'';flex:1;height:1px;background:var(--b)}
+.soc-row{display:flex;gap:10px}
+.soc-btn{flex:1;background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);padding:12px;font-family:var(--ff);font-weight:700;font-size:12px;color:var(--t);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
+.soc-btn:active{border-color:var(--b2);transform:scale(.97)}
+.aswitch{text-align:center;margin-top:22px;font-size:12px;color:var(--t3)}
+.aswitch a{color:var(--o);cursor:pointer;font-weight:600}
+
+/* GREETING */
+.greet{margin:12px 18px;background:linear-gradient(135deg,#1a0700,#0c0c0c 60%);border:1px solid var(--b2);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden}
+.greet::after{content:'⚡';position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:52px;opacity:.06}
+.greet-hi{font-family:var(--ff);font-weight:800;font-size:18px;color:var(--t);margin-bottom:10px}
+.greet-hi span{color:var(--o)}
+.greet-row{display:flex;gap:18px}
+.gs{display:flex;flex-direction:column}
+.gs-n{font-family:var(--ff);font-weight:800;font-size:17px;color:var(--o)}
+.gs-l{font-size:10px;color:var(--t3);letter-spacing:.5px;margin-top:1px}
+.xpbar{height:4px;background:var(--s3);border-radius:2px;overflow:hidden;margin-top:12px}
+.xpfill{height:100%;background:linear-gradient(90deg,var(--o3),var(--o2));border-radius:2px;transition:width .7s var(--ease)}
+
+/* STORIES */
+.stories{display:flex;gap:12px;padding:4px 18px 12px;overflow-x:auto;scrollbar-width:none}
+.stories::-webkit-scrollbar{display:none}
+.st{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0}
+.stRing{width:56px;height:56px;border-radius:50%;padding:2.5px;background:conic-gradient(var(--o3),var(--o2),#FFD700,var(--o3))}
+.stRing.add{background:var(--s2);border:2px dashed var(--b2);padding:0}
+.stAv{width:100%;height:100%;border-radius:50%;background:var(--s3);border:2.5px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden}
+.stAv img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.stName{font-size:9px;color:var(--t2);font-family:var(--ff);font-weight:600;width:56px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* TREND CARDS */
+.trow{display:flex;gap:10px;padding:0 18px 12px;overflow-x:auto;scrollbar-width:none}
+.trow::-webkit-scrollbar{display:none}
+.tcard{background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);padding:12px;display:flex;align-items:center;gap:10px;flex-shrink:0;width:185px;cursor:pointer;transition:all .18s}
+.tcard:active{border-color:var(--b2);transform:scale(.97)}
+.tav{width:38px;height:38px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;overflow:hidden}
+.tav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.tname{font-family:var(--ff);font-weight:700;font-size:12px;color:var(--t)}
+.tmeta{font-size:10px;color:var(--t3);margin-top:1px}
+.flw{background:var(--o);color:#fff;border:none;border-radius:var(--r3);padding:5px 11px;font-family:var(--ff);font-weight:700;font-size:10px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.flw.sent{background:var(--s3);color:var(--t2);border:1px solid var(--b)}
+.flw.friends{background:var(--og);color:var(--o);border:1px solid var(--b2)}
+.flw:active{transform:scale(.93)}
+
+/* POSTS */
+.feed{padding-bottom:4px}
+.post{background:var(--s1);border-top:1px solid var(--b);border-bottom:1px solid var(--b);margin-bottom:6px;animation:up .3s var(--ease) both}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.ph{display:flex;align-items:center;gap:10px;padding:12px 16px 8px}
+.pav{width:36px;height:36px;border-radius:50%;background:var(--s3);border:2px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden;cursor:pointer}
+.pav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.pname{font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t);cursor:pointer}
+.pskill{font-size:10px;color:var(--o);font-family:var(--ff);font-weight:600}
+.ptime{font-size:10px;color:var(--t3)}
+.pimg{width:100%;aspect-ratio:4/3;background:var(--s3);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:72px;cursor:pointer}
+.pimg-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.7),transparent 55%)}
+.pbadge{position:absolute;top:10px;right:10px;background:var(--o);color:#fff;font-family:var(--ff);font-weight:700;font-size:9px;padding:3px 8px;border-radius:20px;letter-spacing:.4px}
+.ptext{font-size:13px;color:var(--t);line-height:1.55;padding:10px 16px 6px}
+.ptags{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 8px}
+.ptag{font-size:10px;color:var(--o2);font-family:var(--ff);font-weight:600;cursor:pointer}
+.pact{display:flex;align-items:center;padding:4px 10px 12px;gap:2px}
+.ab{display:flex;align-items:center;gap:4px;padding:7px 9px;border-radius:var(--r3);cursor:pointer;transition:all .18s;font-family:var(--ff);font-weight:600;font-size:11px;color:var(--t2)}
+.ab:active{transform:scale(.9)}
+.ab svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+.ab.liked{color:var(--o)}.ab.liked svg{stroke:var(--o);fill:var(--o)}
+.ab.saved{color:var(--o)}.ab.saved svg{fill:var(--o);stroke:var(--o)}
+.xpb{margin-left:auto;background:var(--og);border:1px solid var(--b2);border-radius:20px;padding:3px 9px;font-family:var(--ff);font-weight:700;font-size:10px;color:var(--o)}
+
+/* PROFILE */
+.pbanner{height:110px;background:linear-gradient(135deg,#1c0600,#080814,#001c08);position:relative;overflow:hidden;cursor:pointer}
+.pbanner-label{position:absolute;bottom:8px;right:10px;font-size:10px;color:rgba(255,255,255,.3);font-family:var(--ff);font-weight:600}
+.ppic-wrap{position:relative;width:78px;height:78px;margin:0 auto 10px;margin-top:-39px;z-index:1;cursor:pointer}
+.ppic{width:78px;height:78px;border-radius:50%;background:var(--s3);border:3px solid var(--o);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden;box-shadow:0 0 18px rgba(255,98,0,.25)}
+.ppic img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.ppic-edit{position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--o);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid var(--bg)}
+.pname{font-family:var(--ff);font-weight:800;font-size:18px;color:var(--t);text-align:center;margin-bottom:2px}
+.phandle{font-size:12px;color:var(--o2);font-family:var(--ff);font-weight:600;text-align:center;margin-bottom:6px}
+.pbio{font-size:12px;color:var(--t2);line-height:1.5;text-align:center;padding:0 20px;margin-bottom:12px}
+.pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--b);border:1px solid var(--b);border-radius:var(--r2);overflow:hidden;margin:0 18px 14px}
+.psi{background:var(--s1);padding:11px 6px;text-align:center;cursor:pointer;transition:all .18s}
+.psi:active{background:var(--s2)}
+.psn{font-family:var(--ff);font-weight:800;font-size:16px;color:var(--t)}
+.psl{font-size:9px;color:var(--t3);margin-top:1px;font-family:var(--ff);font-weight:700;letter-spacing:.5px}
+.pxpbar{padding:0 18px 14px}
+.pxbt{display:flex;justify-content:space-between;margin-bottom:5px;font-family:var(--ff);font-weight:700;font-size:11px}
+.pxbt .lv{color:var(--o)}.pxbt .pts{color:var(--t3)}
+.pxtrack{height:5px;background:var(--s3);border-radius:3px;overflow:hidden}
+.pxfill{height:100%;background:linear-gradient(90deg,var(--o3),var(--o2));border-radius:3px}
+.skill-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 14px}
+.sch{background:var(--s2);border:1px solid var(--b);border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:5px;cursor:pointer;transition:all .18s}
+.sch:active{border-color:var(--b2)}
+.sch-lv{font-size:9px;color:var(--o);font-family:var(--ff);font-weight:700}
+.sch-n{font-family:var(--ff);font-weight:600;font-size:11px;color:var(--t2)}
+.epbtn{display:flex;align-items:center;gap:8px;margin:0 18px 14px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);padding:11px 14px;cursor:pointer;transition:all .18s}
+.epbtn:active{transform:scale(.98)}
+.epbtn span{font-family:var(--ff);font-weight:700;font-size:13px;color:var(--o)}
+.epbtn svg{width:16px;height:16px;stroke:var(--o);fill:none;stroke-width:2}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.pgitem{aspect-ratio:1;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;overflow:hidden;transition:all .18s;position:relative}
+.pgitem:active{opacity:.7}
+
+/* EDIT PROFILE SCREEN */
+.edit-wrap{padding:16px 18px;min-height:100dvh}
+.edit-banner{height:90px;background:linear-gradient(135deg,#1c0600,#080814);border-radius:var(--r);margin-bottom:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:rgba(255,255,255,.3);font-family:var(--ff);font-weight:600;border:1px dashed var(--b2);position:relative;overflow:hidden}
+.edit-banner-img{position:absolute;inset:0;object-fit:cover;width:100%;height:100%}
+.edit-avwrap{display:flex;justify-content:center;margin-bottom:20px}
+.edit-av{width:80px;height:80px;border-radius:50%;background:var(--s3);border:3px solid var(--o);display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer;overflow:hidden;position:relative}
+.edit-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.edit-av-ov{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;border-radius:50%;opacity:0;transition:opacity .2s}
+.edit-av:hover .edit-av-ov{opacity:1}
+.save-btn{width:100%;background:var(--o);border:none;border-radius:var(--r2);padding:14px;font-family:var(--ff);font-weight:700;font-size:15px;color:#fff;cursor:pointer;margin-top:16px;letter-spacing:.4px;box-shadow:0 4px 18px rgba(255,98,0,.28);transition:all .2s}
+.save-btn:active{transform:scale(.98)}
+.del-btn{width:100%;background:transparent;border:1px solid rgba(239,68,68,.3);border-radius:var(--r2);padding:12px;font-family:var(--ff);font-weight:700;font-size:13px;color:#EF4444;cursor:pointer;margin-top:10px;transition:all .2s}
+.del-btn:active{background:rgba(239,68,68,.07)}
+.skill-add-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.skill-tog{padding:6px 12px;border-radius:20px;font-family:var(--ff);font-weight:600;font-size:11px;cursor:pointer;transition:all .18s;border:1px solid var(--b);color:var(--t3);background:transparent}
+.skill-tog.sel{background:var(--og);border-color:var(--b2);color:var(--o)}
+
+/* FIND */
+.srchwrap{padding:10px 18px 0}
+.sbox{background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);display:flex;align-items:center;gap:10px;padding:11px 14px;transition:all .2s}
+.sbox:focus-within{border-color:var(--b2)}
+.sbox svg{width:16px;height:16px;stroke:var(--t3);fill:none;stroke-width:2;flex-shrink:0}
+.sbox input{flex:1;background:none;border:none;outline:none;font-size:14px;color:var(--t);font-family:var(--fb)}
+.sbox input::placeholder{color:var(--t3)}
+.fchips{display:flex;gap:6px;padding:10px 18px 8px;overflow-x:auto;scrollbar-width:none}
+.fchips::-webkit-scrollbar{display:none}
+.fchip{background:var(--s2);border:1px solid var(--b);border-radius:20px;padding:5px 12px;font-family:var(--ff);font-weight:600;font-size:11px;color:var(--t3);cursor:pointer;white-space:nowrap;transition:all .18s}
+.fchip.on{background:var(--og);border-color:var(--b2);color:var(--o)}
+.urow{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--b);cursor:pointer;transition:all .18s}
+.urow:active{background:var(--s2)}
+.urav{width:44px;height:44px;border-radius:50%;background:var(--s3);border:2px solid var(--b);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;overflow:hidden}
+.urav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.urname{font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t)}
+.urskill{font-size:11px;color:var(--t3);margin-top:1px}
+.urxp{font-size:10px;color:var(--o);font-family:var(--ff);font-weight:600;margin-top:2px}
+
+/* FRIEND REQUESTS panel */
+.req-banner{margin:10px 18px 0;background:linear-gradient(90deg,#1c0600,#0c0c18);border:1px solid var(--b2);border-radius:var(--r2);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.req-count{width:32px;height:32px;border-radius:50%;background:var(--o);display:flex;align-items:center;justify-content:center;font-family:var(--ff);font-weight:800;font-size:14px;color:#fff;flex-shrink:0}
+.req-text{font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t)}
+.req-sub{font-size:11px;color:var(--t3)}
+
+/* COMMUNITIES */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 18px 14px}
+.ccard{background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);padding:14px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.ccard::before{content:'';position:absolute;top:-20px;right:-20px;width:70px;height:70px;background:var(--og2);border-radius:50%}
+.ccard:active{border-color:var(--b2);transform:scale(.97)}
+.ce{font-size:26px;margin-bottom:7px;display:block}
+.cname{font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t);margin-bottom:2px}
+.cdesc{font-size:10px;color:var(--t3);line-height:1.4}
+.cmem{font-size:10px;color:var(--o);font-family:var(--ff);font-weight:600;margin-top:8px}
+.cjoin{position:absolute;bottom:10px;right:10px;background:var(--og);border:1px solid var(--b2);border-radius:var(--r3);padding:3px 9px;font-family:var(--ff);font-weight:700;font-size:9px;color:var(--o);cursor:pointer;transition:all .18s}
+.cjoin.j{background:var(--o);color:#fff;border-color:var(--o)}
+.cc-new{background:var(--og);border:1px dashed var(--b2);border-radius:var(--r2);padding:16px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;margin:0 18px 14px;transition:all .18s}
+.cc-new:active{transform:scale(.98)}
+.cc-new svg{width:24px;height:24px;stroke:var(--o);fill:none;stroke-width:1.5}
+.cc-new span{font-family:var(--ff);font-weight:700;font-size:12px;color:var(--o)}
+
+/* CHALLENGES */
+.chcard{margin:0 18px 12px;background:var(--s2);border:1px solid var(--b);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:all .18s}
+.chcard:active{transform:scale(.98)}
+.chh{padding:14px;display:flex;align-items:flex-start;gap:12px}
+.chicon{width:44px;height:44px;border-radius:var(--r2);background:var(--og);border:1px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.chtype{font-size:9px;color:var(--o);font-family:var(--ff);font-weight:700;letter-spacing:1px;margin-bottom:2px}
+.chtitle{font-family:var(--ff);font-weight:700;font-size:14px;color:var(--t);margin-bottom:3px}
+.chdesc{font-size:11px;color:var(--t2);line-height:1.4}
+.chf{background:var(--s3);padding:10px 14px;display:flex;align-items:center;gap:10px}
+.chxp{font-family:var(--ff);font-weight:700;font-size:11px;color:var(--o);flex:1}
+.chtimer{font-size:10px;color:var(--t3)}
+.chjoin{background:var(--o);color:#fff;border:none;border-radius:var(--r3);padding:6px 14px;font-family:var(--ff);font-weight:700;font-size:11px;cursor:pointer;transition:all .18s}
+.chjoin.j{background:var(--s4);color:var(--t2);border:1px solid var(--b)}
+.chjoin:active{transform:scale(.93)}
+.lbwrap{margin:0 18px 14px;background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);overflow:hidden}
+.lbh{padding:11px 14px;background:var(--og);border-bottom:1px solid var(--b2);font-family:var(--ff);font-weight:700;font-size:11px;color:var(--o);letter-spacing:.6px}
+.lbi{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--b)}
+.lbi:last-child{border-bottom:none}
+.lbrank{font-family:var(--ff);font-weight:800;font-size:14px;width:24px}
+.lbav{width:30px;height:30px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden}
+.lbav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.lbname{font-family:var(--ff);font-weight:600;font-size:12px;color:var(--t);flex:1}
+.lbxp{font-family:var(--ff);font-weight:700;font-size:11px;color:var(--o)}
+
+/* CREATE POST */
+.create-wrap{padding:14px 18px}
+.drop-zone{background:var(--s2);border:1.5px dashed var(--b2);border-radius:var(--r);padding:32px 20px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.drop-zone:active{background:var(--og2)}
+.drop-preview{width:100%;max-height:200px;object-fit:cover;border-radius:var(--r3);margin-top:10px}
+.cinp{width:100%;background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);padding:12px 14px;font-size:13px;color:var(--t);font-family:var(--fb);outline:none;transition:all .2s;resize:none}
+.cinp:focus{border-color:var(--b2)}
+.cinp::placeholder{color:var(--t3)}
+.cpills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.cpill{background:var(--s2);border:1px solid var(--b);border-radius:20px;padding:6px 12px;font-family:var(--ff);font-weight:600;font-size:11px;color:var(--t3);cursor:pointer;transition:all .18s}
+.cpill.sel{background:var(--og);border-color:var(--b2);color:var(--o)}
+
+/* NOTIFS */
+.nitem{display:flex;align-items:flex-start;gap:10px;padding:13px 18px;border-bottom:1px solid var(--b);cursor:pointer;transition:all .18s}
+.nitem.unread{background:var(--og2)}
+.nitem:active{background:var(--s2)}
+.nic{width:38px;height:38px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden}
+.nic img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.ntext{font-size:12px;color:var(--t);line-height:1.5}
+.ntext strong{color:var(--o);font-family:var(--ff)}
+.ntime{font-size:10px;color:var(--t3);margin-top:3px}
+.nact-btns{display:flex;gap:8px;margin-top:8px}
+.nact{padding:5px 14px;border-radius:20px;font-family:var(--ff);font-weight:700;font-size:11px;cursor:pointer;border:none;transition:all .18s}
+.nact.acc{background:var(--o);color:#fff}
+.nact.dec{background:var(--s3);color:var(--t2);border:1px solid var(--b)}
+.nact:active{transform:scale(.93)}
+
+/* DM / CHAT */
+.dmitem{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--b);cursor:pointer;transition:all .18s}
+.dmitem:active{background:var(--s2)}
+.dmav{width:46px;height:46px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;position:relative;overflow:hidden}
+.dmav img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.dmon{position:absolute;bottom:1px;right:1px;width:10px;height:10px;background:#22C55E;border-radius:50%;border:2px solid var(--s1)}
+.dmname{font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t)}
+.dmprev{font-size:11px;color:var(--t3);margin-top:2px}
+.dmtime{font-size:10px;color:var(--t3)}
+.dmbadge{width:16px;height:16px;background:var(--o);border-radius:50%;font-size:9px;color:#fff;font-family:var(--ff);font-weight:700;display:flex;align-items:center;justify-content:center;margin:4px 0 0 auto}
+.chat-tb{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--b);background:rgba(7,7,7,.95);backdrop-filter:blur(18px);position:sticky;top:0;z-index:10}
+.chat-tb .back{padding:6px;cursor:pointer;border-radius:var(--r3);transition:all .18s}
+.chat-tb .back:active{background:var(--s2)}
+.chat-tb .back svg{width:20px;height:20px;stroke:var(--t2);fill:none;stroke-width:2;display:block}
+.chat-av{width:34px;height:34px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:15px;overflow:hidden;flex-shrink:0}
+.chat-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.chat-name{font-family:var(--ff);font-weight:700;font-size:14px;color:var(--t)}
+.chat-status{font-size:10px;color:#22C55E}
+.msgs{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;scrollbar-width:none}
+.msgs::-webkit-scrollbar{display:none}
+.mb{max-width:80%;padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word}
+.min{background:var(--s3);color:var(--t);border-bottom-left-radius:3px;align-self:flex-start}
+.mout{background:var(--o);color:#fff;border-bottom-right-radius:3px;align-self:flex-end}
+.mtime{font-size:9px;opacity:.5;margin-top:3px;font-family:var(--ff)}
+.chatbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--b);background:var(--s1)}
+.ci{flex:1;background:var(--s2);border:1px solid var(--b);border-radius:24px;padding:9px 14px;font-size:13px;color:var(--t);font-family:var(--fb);outline:none;transition:all .2s}
+.ci:focus{border-color:var(--b2)}
+.ci::placeholder{color:var(--t3)}
+.csend{width:38px;height:38px;border-radius:50%;background:var(--o);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .18s}
+.csend:active{transform:scale(.9)}
+.csend svg{width:16px;height:16px;fill:#fff;display:block}
+
+/* MODAL SHEET */
+.sheet-ov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s var(--ease)}
+.sheet-ov.open{opacity:1;pointer-events:all}
+.sheet{background:var(--s1);border-radius:var(--r) var(--r) 0 0;border-top:1px solid var(--b);padding:20px 20px 32px;width:100%;max-width:430px;transform:translateY(100%);transition:transform .3s var(--ease)}
+.sheet-ov.open .sheet{transform:none}
+.sheet-handle{width:32px;height:4px;background:var(--b2);border-radius:2px;margin:0 auto 18px}
+.sheet-title{font-family:var(--ff);font-weight:800;font-size:16px;color:var(--t);margin-bottom:4px}
+.sheet-sub{font-size:12px;color:var(--t3);margin-bottom:18px}
+.sacc{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);cursor:pointer;transition:all .2s;margin-bottom:8px}
+.sacc:active{border-color:var(--b2)}
+.sacc-av{width:38px;height:38px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:17px;border:2px solid var(--b);flex-shrink:0}
+.sacc-nm{font-family:var(--ff);font-weight:700;font-size:13px}
+.sacc-em{font-size:11px;color:var(--t3)}
+.sheet-cancel{width:100%;background:var(--s3);border:1px solid var(--b);border-radius:var(--r2);padding:12px;font-family:var(--ff);font-weight:600;font-size:13px;color:var(--t3);cursor:pointer;margin-top:8px;transition:all .2s}
+.sheet-cancel:active{transform:scale(.98)}
+
+/* USER PROFILE VIEW (other users) */
+.uvwrap{padding-bottom:8px}
+.uv-actions{display:flex;gap:8px;margin:0 18px 14px}
+.uv-follow{flex:1;background:var(--o);border:none;border-radius:var(--r2);padding:11px;font-family:var(--ff);font-weight:700;font-size:13px;color:#fff;cursor:pointer;transition:all .18s;letter-spacing:.4px}
+.uv-follow.sent{background:var(--s2);color:var(--t2);border:1px solid var(--b)}
+.uv-follow.friends{background:var(--og);color:var(--o);border:1px solid var(--b2)}
+.uv-msg{background:var(--s2);border:1px solid var(--b);border-radius:var(--r2);padding:11px 16px;font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t);cursor:pointer;transition:all .18s;white-space:nowrap}
+.uv-msg:active{border-color:var(--b2)}
+
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);padding:9px 18px;font-family:var(--ff);font-weight:600;font-size:12px;color:var(--o);z-index:999;opacity:0;transition:all .22s var(--ease);white-space:nowrap;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.5)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* FILE INPUT HIDDEN */
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- LOADING SCREEN -->
+<div id="scr-loading" class="scr auth on" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px">
+  <div style="font-family:var(--ff);font-weight:800;font-size:32px;color:var(--o)">SkillSpark ⚡</div>
+  <div style="font-size:13px;color:var(--t3)">Loading...</div>
+  <div style="width:40px;height:40px;border:3px solid var(--b2);border-top-color:var(--o);border-radius:50%;animation:spin .8s linear infinite"></div>
+</div>
+
+<!-- AUTH -->
+<div id="scr-auth" class="scr auth" style="display:none;opacity:1;pointer-events:all;transform:none">
+<div class="auth-bg"></div>
+<div class="auth-inner">
+<div class="alogo">SkillSpark ⚡</div>
+<div class="atag">Show Your Skill. Spark Your Future.</div>
+<div class="atitle" id="auth-title">Join the talent revolution</div>
+<div class="asub" id="auth-sub">No degrees. No resumes. Just pure skill.</div>
+<div class="fg" id="a-name-fg"><label class="fl">NAME</label><input class="fi" id="a-name" placeholder="Your full name"></div>
+<div class="fg" id="a-ug"><label class="fl">USERNAME</label><input class="fi" id="a-user" placeholder="@yourhandle"></div>
+<div class="fg"><label class="fl">EMAIL</label><input class="fi" id="a-email" type="email" placeholder="you@example.com"></div>
+<div class="fg"><label class="fl">PASSWORD</label><input class="fi" id="a-pass" type="password" placeholder="Minimum 6 characters"></div>
+<div id="auth-error" style="font-size:12px;color:#EF4444;font-family:var(--ff);margin-bottom:8px;display:none"></div>
+<button class="abtn" id="auth-btn" onclick="doEmailAuth()">Create Account 🚀</button>
+<div class="adiv">or</div>
+<div class="soc-row">
+<button class="soc-btn" id="google-btn" onclick="doGoogleAuth()">
+<svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+Continue with Google
+</button>
+</div>
+<div class="aswitch" id="auth-sw">Have an account? <a onclick="toggleAuth()">Sign In</a></div>
+</div>
+</div>
+
+<!-- USERNAME SETUP (after Google login, first time) -->
+<div id="scr-setup" class="scr auth" style="display:none;opacity:1;pointer-events:all;transform:none">
+<div class="auth-bg"></div>
+<div class="auth-inner">
+<div class="alogo">SkillSpark ⚡</div>
+<div class="atag">Almost there!</div>
+<div class="atitle">Pick your username</div>
+<div class="asub" id="setup-sub">This is how people will find you.</div>
+<div class="fg"><label class="fl">USERNAME</label><input class="fi" id="setup-user" placeholder="@yourhandle" oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'').toLowerCase()"></div>
+<div class="fg"><label class="fl">DISPLAY NAME</label><input class="fi" id="setup-name" placeholder="Your full name"></div>
+<div id="setup-error" style="font-size:12px;color:#EF4444;font-family:var(--ff);margin-bottom:8px;display:none"></div>
+<button class="abtn" onclick="finishSetup()">Let's Go ⚡</button>
+</div>
+</div>
+
+<!-- ===================== HOME ===================== -->
+<div id="scr-home" class="scr">
+<div class="tb">
+<div class="logo">SkillSpark ⚡</div>
+<div style="display:flex;gap:8px">
+<div class="ib" onclick="go('notifications')"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg><div class="dot" id="notif-dot"></div></div>
+<div class="ib" onclick="go('dms')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+</div>
+</div>
+<div id="greet-card"></div>
+<div class="sh"><div class="sh-t">📸 STORIES</div></div>
+<div class="stories" id="stories-row"></div>
+<div class="sh"><div class="sh-t">🔥 TRENDING</div><div class="sh-a" onclick="go('find')">See All</div></div>
+<div class="trow" id="trend-row"></div>
+<div class="sh"><div class="sh-t">⚡ SKILL FEED</div></div>
+<div id="home-feed"></div>
+</div>
+
+<!-- ===================== FIND ===================== -->
+<div id="scr-find" class="scr">
+<div class="tb"><div class="logo">Discover ⚡</div></div>
+<div id="req-banner"></div>
+<div class="srchwrap"><div class="sbox"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input placeholder="Search name, skill, @handle..." id="s-inp" oninput="renderUsers()"></div></div>
+<div class="fchips">
+<div class="fchip on" onclick="setF(this,'All')">All</div>
+<div class="fchip" onclick="setF(this,'Gaming')">🎮 Gaming</div>
+<div class="fchip" onclick="setF(this,'Coding')">💻 Coding</div>
+<div class="fchip" onclick="setF(this,'Design')">🎨 Design</div>
+<div class="fchip" onclick="setF(this,'AI/ML')">🤖 AI/ML</div>
+<div class="fchip" onclick="setF(this,'Music')">🎵 Music</div>
+<div class="fchip" onclick="setF(this,'Fitness')">🏋️ Fitness</div>
+</div>
+<div id="user-list"></div>
+</div>
+
+<!-- ===================== COMMUNITIES ===================== -->
+<div id="scr-communities" class="scr">
+<div class="tb"><div class="logo">Tribes ⚡</div></div>
+<div class="sh"><div class="sh-t">🌐 COMMUNITIES</div></div>
+<div class="cc-new" onclick="createComm()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg><span>Create New Community</span></div>
+<div class="cgrid" id="comm-grid"></div>
+</div>
+
+<!-- ===================== CREATE ===================== -->
+<div id="scr-create" class="scr">
+<div class="tb"><div class="logo">Create ⚡</div></div>
+<div class="create-wrap">
+<div class="drop-zone" onclick="document.getElementById('post-img-inp').click()">
+<div id="drop-inner">
+<div style="font-size:40px;margin-bottom:10px">📸</div>
+<div style="font-family:var(--ff);font-weight:700;font-size:15px;color:var(--t);margin-bottom:4px">Tap to upload</div>
+<div style="font-size:12px;color:var(--t3)">Photo or Video</div>
+</div>
+</div>
+<input type="file" id="post-img-inp" accept="image/*,video/*" onchange="previewPost(this)">
+<textarea class="cinp" rows="3" id="post-caption" placeholder="Describe your skill... what did you build, create, or achieve? ✨" style="margin-bottom:12px"></textarea>
+<div style="font-family:var(--ff);font-weight:700;font-size:10px;color:var(--t3);letter-spacing:.7px;margin-bottom:8px">SKILL CATEGORY</div>
+<div class="cpills" id="cat-pills"></div>
+<div style="font-family:var(--ff);font-weight:700;font-size:10px;color:var(--t3);letter-spacing:.7px;margin-bottom:8px">POST TO</div>
+<div style="display:flex;gap:8px;margin-bottom:16px">
+<div class="cpill sel" onclick="selPill(this)">📢 Feed</div>
+<div class="cpill" onclick="selPill(this)">🌐 My Tribe</div>
+<div class="cpill" onclick="selPill(this)">👥 Friends</div>
+</div>
+<button class="abtn" style="margin-top:0" onclick="publishPost()">Spark It! ⚡</button>
+</div>
+</div>
+
+<!-- ===================== CHALLENGES ===================== -->
+<div id="scr-challenges" class="scr">
+<div class="tb"><div class="logo">Challenges ⚡</div></div>
+<div class="sh"><div class="sh-t">⚡ ACTIVE CHALLENGES</div></div>
+<div id="ch-list"></div>
+<div class="sh"><div class="sh-t">🏆 LEADERBOARD</div></div>
+<div class="lbwrap"><div class="lbh">🏆 WEEKLY SKILL KINGS</div><div id="lb-list"></div></div>
+</div>
+
+<!-- ===================== PROFILE ===================== -->
+<div id="scr-profile" class="scr">
+<div class="pbanner" id="p-banner" onclick="go('editprofile')"><div class="pbanner-label">Tap to change cover</div></div>
+<div style="padding:0 18px 6px;text-align:center">
+<div class="ppic-wrap" onclick="go('editprofile')">
+<div class="ppic" id="p-pic">⚡</div>
+<div class="ppic-edit">✏️</div>
+</div>
+<div class="pname" id="p-name">—</div>
+<div class="phandle" id="p-handle">@—</div>
+<div class="pbio" id="p-bio">—</div>
+</div>
+<div class="pstats">
+<div class="psi" onclick="showFollowers()"><div class="psn" id="p-posts">0</div><div class="psl">POSTS</div></div>
+<div class="psi" onclick="showFollowers()"><div class="psn" id="p-followers">0</div><div class="psl">FOLLOWERS</div></div>
+<div class="psi" onclick="showFollowers()"><div class="psn" id="p-following">0</div><div class="psl">FOLLOWING</div></div>
+</div>
+<div class="pxpbar">
+<div class="pxbt"><span class="lv" id="p-level">Level 1</span><span class="pts" id="p-xp-txt">0 / 1000 XP</span></div>
+<div class="pxtrack"><div class="pxfill" id="p-xp-fill" style="width:0%"></div></div>
+</div>
+<div class="skill-chips" id="p-skill-chips"></div>
+<div class="epbtn" onclick="go('editprofile')">
+<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+<span>Edit Profile</span>
+</div>
+<div class="sh"><div class="sh-t">🔥 MY POSTS</div></div>
+<div class="pgrid" id="my-posts-grid"></div>
+</div>
+
+<!-- ===================== EDIT PROFILE ===================== -->
+<div id="scr-editprofile" class="scr editp">
+<div class="tb">
+<div style="display:flex;align-items:center;gap:12px">
+<div class="ib" onclick="go('profile')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+<div class="logo" style="font-size:17px">Edit Profile</div>
+</div>
+</div>
+<div class="edit-wrap">
+<div class="edit-banner" onclick="document.getElementById('banner-inp').click()" id="edit-banner-div">
+<span id="edit-banner-lbl">📷 Change Cover Photo</span>
+<img id="edit-banner-preview" class="edit-banner-img" style="display:none">
+</div>
+<input type="file" id="banner-inp" accept="image/*" onchange="previewBanner(this)">
+<div class="edit-avwrap">
+<div class="edit-av" onclick="document.getElementById('avatar-inp').click()" id="edit-av-div">
+<span id="edit-av-em">⚡</span>
+<img id="edit-av-preview" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%">
+<div class="edit-av-ov"><span style="font-size:20px">📷</span></div>
+</div>
+</div>
+<input type="file" id="avatar-inp" accept="image/*" onchange="previewAvatar(this)">
+<div class="fg"><label class="fl">DISPLAY NAME</label><input class="fi" id="ep-name" placeholder="Your name"></div>
+<div class="fg"><label class="fl">USERNAME</label><input class="fi" id="ep-user" placeholder="@handle"></div>
+<div class="fg"><label class="fl">BIO</label><textarea class="fi" id="ep-bio" rows="3" placeholder="Tell the world about your skills..." style="resize:none"></textarea></div>
+<div class="fg"><label class="fl">LOCATION</label><input class="fi" id="ep-loc" placeholder="City, Country"></div>
+<div class="fg"><label class="fl">WEBSITE / PORTFOLIO</label><input class="fi" id="ep-web" placeholder="https://yoursite.com"></div>
+<div class="fg">
+<label class="fl">SKILLS</label>
+<div class="skill-add-row" id="ep-skills"></div>
+</div>
+<button class="save-btn" onclick="saveProfile()">Save Changes ✓</button>
+<button class="del-btn" onclick="logout()">Log Out</button>
+</div>
+</div>
+
+<!-- ===================== OTHER USER PROFILE ===================== -->
+<div id="scr-userprofile" class="scr">
+<div class="tb">
+<div class="ib" onclick="history.back();goBack()"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+<div class="logo" style="font-size:17px" id="uv-title">Profile</div>
+</div>
+<div class="uvwrap">
+<div class="pbanner" id="uv-banner"></div>
+<div style="padding:0 18px 6px;text-align:center">
+<div class="ppic-wrap" style="cursor:default">
+<div class="ppic" id="uv-pic">?</div>
+</div>
+<div class="pname" id="uv-name">—</div>
+<div class="phandle" id="uv-handle">@—</div>
+<div class="pbio" id="uv-bio">—</div>
+</div>
+<div class="pstats">
+<div class="psi"><div class="psn" id="uv-posts">0</div><div class="psl">POSTS</div></div>
+<div class="psi"><div class="psn" id="uv-followers">0</div><div class="psl">FOLLOWERS</div></div>
+<div class="psi"><div class="psn" id="uv-following">0</div><div class="psl">FOLLOWING</div></div>
+</div>
+<div class="uv-actions">
+<button class="uv-follow" id="uv-follow-btn" onclick="uvToggleFollow()">Connect ＋</button>
+<button class="uv-msg" onclick="uvMessage()">💬 Message</button>
+</div>
+<div class="skill-chips" id="uv-skills"></div>
+<div class="sh"><div class="sh-t">🔥 POSTS</div></div>
+<div class="pgrid" id="uv-posts-grid"></div>
+</div>
+</div>
+
+<!-- ===================== NOTIFICATIONS ===================== -->
+<div id="scr-notifications" class="scr">
+<div class="tb"><div class="logo">Alerts ⚡</div></div>
+<div id="notif-list"></div>
+</div>
+
+<!-- ===================== DMS ===================== -->
+<div id="scr-dms" class="scr">
+<div class="tb"><div class="logo">Messages ⚡</div></div>
+<div id="dm-list"></div>
+</div>
+
+<!-- ===================== CHAT ===================== -->
+<div id="scr-chat" class="scr chat-scr" style="display:flex;flex-direction:column">
+<div class="chat-tb">
+<div class="back" onclick="go('dms')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+<div class="chat-av" id="chat-av">?</div>
+<div style="flex:1"><div class="chat-name" id="chat-name">—</div><div class="chat-status" id="chat-status">● Online</div></div>
+</div>
+<div class="msgs" id="chat-msgs"></div>
+<div class="chatbar">
+<input class="ci" id="chat-inp" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMsg()">
+<button class="csend" onclick="sendMsg()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
+</div>
+</div>
+
+<!-- ===================== NAV ===================== -->
+<div id="nav">
+<div class="ni on" id="ni-home" onclick="go('home')">
+<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+<span>HOME</span>
+</div>
+<div class="ni" id="ni-find" onclick="go('find')">
+<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+<span>FIND</span>
+</div>
+<div class="spark-btn" onclick="go('create')">
+<svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+</div>
+<div class="ni" id="ni-communities" onclick="go('communities')">
+<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+<span>TRIBES</span>
+</div>
+<div class="ni" id="ni-profile" onclick="go('profile')">
+<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+<span>ME</span>
+</div>
+</div>
+
+<!-- SHEET MODAL -->
+<div class="sheet-ov" id="sheet" onclick="if(event.target===this)closeSheet()">
+<div class="sheet">
+<div class="sheet-handle"></div>
+<div id="sheet-content"></div>
+</div>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="story-inp" accept="image/*" onchange="addStory(this)">
+
+</div><!-- #root -->
+<style>
+@keyframes spin{to{transform:rotate(360deg)}}
+.scr-loading-hide{display:none!important}
+</style>
+
+<!-- FIREBASE SDKs -->
+<!-- FIREBASE AUTH ONLY (no Firestore needed) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCvzq9la4C6zjuTQcswBn8k4CuZ8Px5F6Q",
+  authDomain: "skillspark-2026.firebaseapp.com",
+  projectId: "skillspark-2026",
+  storageBucket: "skillspark-2026.firebasestorage.app",
+  messagingSenderId: "133702543176",
+  appId: "1:133702543176:web:5a39849f573401f449b57d"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+// ═══════════════════════════════════════
+//  localStorage DB (all app data)
+// ═══════════════════════════════════════
+let DB = {
+  users: [], currentUser: null, posts: [],
+  requests: {}, friends: {}, messages: {},
+  communities: [], challenges: [], notifications: [], stories: {}
+};
+
+function saveDB(){ try{ localStorage.setItem('ss_db', JSON.stringify(DB)); }catch(e){} }
+function loadDB(){
+  try{
+    const d = JSON.parse(localStorage.getItem('ss_db')||'{}');
+    if(d.users) DB = {...DB, ...d};
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════
+function $(id){ return document.getElementById(id); }
+function showErr(id, msg){ const el=$(id); if(!el) return; el.textContent=msg; el.style.display=msg?'block':'none'; }
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2800);
+}
+function timeAgo(ts){
+  if(!ts) return ''; const d=(Date.now()-ts)/1000;
+  if(d<60) return 'just now'; if(d<3600) return Math.floor(d/60)+'m ago';
+  if(d<86400) return Math.floor(d/3600)+'h ago'; return Math.floor(d/86400)+'d ago';
+}
+function fmtNum(n){ if(!n) return '0'; if(n>=1000000) return (n/1000000).toFixed(1)+'M'; if(n>=1000) return (n/1000).toFixed(1)+'k'; return n; }
+function skillEmoji(s){ const m={Gaming:'🎮',Coding:'💻',Design:'🎨',Music:'🎵','AI/ML':'🤖',Fitness:'🏋️',Speaking:'🎤',Business:'📊',Art:'🖌️',Photography:'📷',Writing:'✍️',Cooking:'🍳'}; return m[s]||'⚡'; }
+function levelTitle(l){ const t=['Newcomer','Spark','Rising Star','Skilled','Expert','Elite','Master','Legend','Myth','Icon']; return t[Math.min((l||1)-1,9)]; }
+function getUser(uid){ return DB.users.find(u=>u.id===uid); }
+function me(){ return getUser(DB.currentUser); }
+
+// ═══════════════════════════════════════
+//  AUTH STATE
+// ═══════════════════════════════════════
+let authMode = 'signup';
+loadDB();
+
+onAuthStateChanged(auth, async (firebaseUser) => {
+  $('scr-loading').style.display = 'none';
+  if(firebaseUser){
+    // Find or create local profile
+    let localUser = DB.users.find(u => u.firebaseUid === firebaseUser.uid);
+    if(!localUser){
+      // Google user first time — show username setup
+      window._pendingFbUser = firebaseUser;
+      showSetup(firebaseUser);
+      return;
+    }
+    DB.currentUser = localUser.id;
+    saveDB();
+    enterApp();
+  } else {
+    DB.currentUser = null;
+    saveDB();
+    showAuthScreen();
+  }
+});
+
+function showAuthScreen(){
+  document.querySelectorAll('.scr').forEach(s=>s.style.display='none');
+  $('nav').style.display='none';
+  $('scr-auth').style.display='';
+}
+
+function showSetup(fbUser){
+  document.querySelectorAll('.scr').forEach(s=>s.style.display='none');
+  $('nav').style.display='none';
+  $('scr-setup').style.display='';
+  if($('setup-name')) $('setup-name').value = fbUser.displayName||'';
+}
+
+// ═══════════════════════════════════════
+//  TOGGLE AUTH MODE
+// ═══════════════════════════════════════
+window.toggleAuth = function(){
+  authMode = authMode==='signup'?'login':'signup';
+  showErr('auth-error','');
+  if(authMode==='login'){
+    $('a-ug').style.display='none'; $('a-name-fg').style.display='none';
+    $('auth-btn').textContent='Sign In ⚡';
+    $('auth-title').textContent='Welcome back!';
+    $('auth-sub').textContent='Pick up where you left off.';
+    $('auth-sw').innerHTML='New here? <a onclick="toggleAuth()">Create Account</a>';
+  } else {
+    $('a-ug').style.display='block'; $('a-name-fg').style.display='block';
+    $('auth-btn').textContent='Create Account 🚀';
+    $('auth-title').textContent='Join the talent revolution';
+    $('auth-sub').textContent='No degrees. No resumes. Just pure skill.';
+    $('auth-sw').innerHTML='Have an account? <a onclick="toggleAuth()">Sign In</a>';
+  }
+};
+
+// ═══════════════════════════════════════
+//  EMAIL AUTH
+// ═══════════════════════════════════════
+window.doEmailAuth = async function(){
+  const email=$('a-email').value.trim(), pass=$('a-pass').value;
+  const name=$('a-name').value.trim();
+  showErr('auth-error','');
+  if(!email||!pass){ showErr('auth-error','Email & password required'); return; }
+  const btn=$('auth-btn'); btn.disabled=true; btn.textContent='Please wait...';
+
+  try{
+    if(authMode==='signup'){
+      const uname=$('a-user').value.trim().replace('@','').toLowerCase();
+      if(!name){ showErr('auth-error','Name is required'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
+      if(!uname){ showErr('auth-error','Username required'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
+      if(pass.length<6){ showErr('auth-error','Password min 6 characters'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
+      if(DB.users.find(u=>u.username===uname)){ showErr('auth-error','Username already taken'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
+      // Create Firebase Auth account
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(cred.user, {displayName: name});
+      // Save to local DB
+      const uid = 'u_'+Date.now();
+      const user = {
+        id:uid, firebaseUid:cred.user.uid, name, username:uname, email,
+        bio:'Hey! I just joined SkillSpark ⚡', skills:[], emoji:'⚡',
+        xp:0, level:1, posts:[], followers:[], following:[],
+        location:'', website:'', avatar: cred.user.photoURL||'', banner:'',
+        joinedComms:[], joinedChallenges:[], createdAt: Date.now()
+      };
+      DB.users.push(user);
+      DB.requests[uid]=[]; DB.friends[uid]=[];
+      DB.currentUser = uid;
+      saveDB();
+      toast('🚀 Account created! Welcome to SkillSpark!');
+    } else {
+      // Sign in with Firebase
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      const localUser = DB.users.find(u=>u.firebaseUid===cred.user.uid);
+      if(!localUser){ showErr('auth-error','Account not found on this device. Please sign up again.'); btn.disabled=false; btn.textContent='Sign In ⚡'; return; }
+      DB.currentUser = localUser.id;
+      saveDB();
+      toast('✅ Welcome back, '+localUser.name.split(' ')[0]+'!');
+    }
+  } catch(e){
+    const msgs = {
+      'auth/email-already-in-use':'Email already registered.',
+      'auth/invalid-email':'Invalid email.',
+      'auth/wrong-password':'Wrong password.',
+      'auth/user-not-found':'No account with this email.',
+      'auth/invalid-credential':'Wrong email or password.',
+      'auth/too-many-requests':'Too many attempts. Try later.',
+      'auth/network-request-failed':'No internet connection.',
+    };
+    showErr('auth-error', msgs[e.code]||e.message);
+    btn.disabled=false; btn.textContent=authMode==='signup'?'Create Account 🚀':'Sign In ⚡';
+  }
+};
+
+// ═══════════════════════════════════════
+//  GOOGLE AUTH
+// ═══════════════════════════════════════
+window.doGoogleAuth = async function(){
+  showErr('auth-error','');
+  const btn=$('google-btn'); btn.disabled=true; btn.textContent='Opening Google...';
+  try{
+    const result = await signInWithPopup(auth, googleProvider);
+    // onAuthStateChanged will handle next steps
+  } catch(e){
+    if(e.code !== 'auth/popup-closed-by-user'){
+      showErr('auth-error', e.message);
+    }
+    btn.disabled=false; btn.innerHTML=`<svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Continue with Google`;
+  }
+};
+
+// ═══════════════════════════════════════
+//  USERNAME SETUP (Google first time)
+// ═══════════════════════════════════════
+window.finishSetup = async function(){
+  const fbUser = window._pendingFbUser; if(!fbUser) return;
+  const uname=$('setup-user').value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  const name=$('setup-name').value.trim()||fbUser.displayName||'SkillSparker';
+  showErr('setup-error','');
+  if(!uname||uname.length<3){ showErr('setup-error','Username must be at least 3 characters'); return; }
+  if(DB.users.find(u=>u.username===uname)){ showErr('setup-error','Username already taken'); return; }
+  const uid='u_'+Date.now();
+  const user={
+    id:uid, firebaseUid:fbUser.uid, name, username:uname,
+    email:fbUser.email||'', bio:'Hey! I just joined SkillSpark ⚡',
+    skills:[], emoji:'⚡', xp:0, level:1, posts:[], followers:[], following:[],
+    location:'', website:'', avatar:fbUser.photoURL||'', banner:'',
+    joinedComms:[], joinedChallenges:[], createdAt:Date.now()
+  };
+  DB.users.push(user);
+  DB.requests[uid]=[]; DB.friends[uid]=[];
+  DB.currentUser=uid;
+  saveDB();
+  toast('🚀 Welcome to SkillSpark!');
+  enterApp();
+};
+
+// ═══════════════════════════════════════
+//  LOGOUT
+// ═══════════════════════════════════════
+window.logout = async function(){
+  if(!confirm('Log out?')) return;
+  await signOut(auth);
+};
+
+// ═══════════════════════════════════════
+//  ENTER APP
+// ═══════════════════════════════════════
+function enterApp(){
+  document.querySelectorAll('.scr').forEach(s=>s.style.display='none');
+  $('nav').style.display='flex';
+  seedDemoData();
+  showScreen('home');
+}
+
+// ═══════════════════════════════════════
+//  SEED DEMO DATA (first time only)
+// ═══════════════════════════════════════
+function seedDemoData(){
+  if(DB._seeded) return;
+  DB._seeded=true;
+  const demos=[
+    {id:'demo1',firebaseUid:'demo1',name:'Aryan Sharma',username:'aryan_codes',email:'',bio:'Full stack dev 💻 Building cool stuff',skills:['Coding','AI/ML'],emoji:'💻',xp:2450,level:3,posts:[],followers:[DB.currentUser],following:[],location:'Mumbai',avatar:'',banner:'',joinedComms:[],joinedChallenges:[],createdAt:Date.now()-86400000*5},
+    {id:'demo2',firebaseUid:'demo2',name:'Priya Designs',username:'priya_ui',email:'',bio:'UI/UX Designer 🎨 Making things beautiful',skills:['Design','Art'],emoji:'🎨',xp:1800,level:2,posts:[],followers:[],following:[],location:'Bangalore',avatar:'',banner:'',joinedComms:[],joinedChallenges:[],createdAt:Date.now()-86400000*3},
+    {id:'demo3',firebaseUid:'demo3',name:'Raj Gamer',username:'raj_gamer99',email:'',bio:'Pro gamer 🎮 Top 0.1% ranked',skills:['Gaming'],emoji:'🎮',xp:3200,level:4,posts:[],followers:[],following:[],location:'Delhi',avatar:'',banner:'',joinedComms:[],joinedChallenges:[],createdAt:Date.now()-86400000*7},
+  ];
+  // Only add demos that don't exist
+  demos.forEach(d=>{ if(!DB.users.find(u=>u.id===d.id)) DB.users.push(d); });
+  // Add demo posts
+  if(!DB.posts.length){
+    DB.posts=[
+      {id:'p1',uid:'demo1',text:'Just built a full-stack chat app with React + Node.js! Real-time messages, rooms, and file sharing. 🚀 #Coding #WebDev',image:'',skill:'Coding',tags:['#Coding','#WebDev'],likes:[DB.currentUser],comments:[{uid:DB.currentUser,username:me()?.username||'you',text:'Amazing work! 🔥',time:Date.now()-3600000}],xp:50,time:Date.now()-7200000},
+      {id:'p2',uid:'demo2',text:'Redesigned the Zomato app UI — cleaner, faster, more intuitive. Figma file open source! 🎨 #Design #UI',image:'',skill:'Design',tags:['#Design','#UI'],likes:[],comments:[],xp:50,time:Date.now()-14400000},
+      {id:'p3',uid:'demo3',text:'Hit Challenger rank in League of Legends! 3 months of grinding paid off 🏆🎮 #Gaming #Esports',image:'',skill:'Gaming',tags:['#Gaming','#Esports'],likes:[DB.currentUser,'demo1','demo2'],comments:[],xp:50,time:Date.now()-28800000},
+    ];
+  }
+  if(!DB.communities.length){
+    DB.communities=[
+      {id:'c1',emoji:'🎮',name:'GamersHub',desc:'Gaming tricks & highlights',members:128,membersList:[]},
+      {id:'c2',emoji:'💻',name:'CodeForge',desc:'Build, ship, repeat',members:256,membersList:[]},
+      {id:'c3',emoji:'🎨',name:'DesignLab',desc:'Creative minds unite',members:94,membersList:[]},
+      {id:'c4',emoji:'🤖',name:'AI/ML Crew',desc:'Future of intelligence',members:312,membersList:[]},
+      {id:'c5',emoji:'🎵',name:'BeatMakers',desc:'Music production & covers',members:67,membersList:[]},
+      {id:'c6',emoji:'🏋️',name:'FitTribe',desc:'Fitness & health goals',members:145,membersList:[]},
+    ];
+  }
+  saveDB();
+}
+
+// ═══════════════════════════════════════
+//  SCREENS
+// ═══════════════════════════════════════
+let currentFilter='All', chatWith=null, viewingUser=null, prevScreen='home';
+
+function showScreen(name){
+  document.querySelectorAll('.scr').forEach(s=>{ s.style.display='none'; s.classList.remove('on'); });
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  const s=$('scr-'+name);
+  if(s){ s.style.display=''; setTimeout(()=>s.classList.add('on'),10); }
+  const n=$('ni-'+name); if(n) n.classList.add('on');
+  if(name==='home'){ renderGreet(); renderTrending(); renderFeed(); renderStories(); }
+  if(name==='profile') renderProfile();
+  if(name==='find') renderUsers();
+  if(name==='communities') renderCommunities();
+  if(name==='challenges') renderChallenges();
+  if(name==='dms') renderDMs();
+  if(name==='notifications'){ renderNotifs(); $('notif-dot').style.display='none'; }
+}
+window.go=function(name){
+  prevScreen=document.querySelector('.scr.on')?.id?.replace('scr-','')||'home';
+  if(name==='editprofile'){ showScreen('editprofile'); openEditProfile(); return; }
+  showScreen(name);
+};
+window.goBack=function(){ showScreen(prevScreen); };
+
+// ═══════════════════════════════════════
+//  GREET
+// ═══════════════════════════════════════
+function renderGreet(){
+  const u=me(); if(!u) return;
+  const pct=Math.min(100,Math.round(((u.xp||0)%1000)/10));
+  $('greet-card').innerHTML=`<div class="greet">
+    <div class="greet-hi">Hey, <span>${u.name.split(' ')[0]}</span> 👋</div>
+    <div class="greet-row">
+      <div class="gs"><div class="gs-n">${fmtNum(u.xp)}</div><div class="gs-l">TOTAL XP</div></div>
+      <div class="gs"><div class="gs-n">Lvl ${u.level}</div><div class="gs-l">LEVEL</div></div>
+      <div class="gs"><div class="gs-n">${(u.followers||[]).length}</div><div class="gs-l">FOLLOWERS</div></div>
+    </div>
+    <div class="xpbar"><div class="xpfill" style="width:${pct}%"></div></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+//  STORIES
+// ═══════════════════════════════════════
+function renderStories(){
+  const u=me(); if(!u) return;
+  const others=DB.users.filter(x=>x.id!==u.id).slice(0,5);
+  $('stories-row').innerHTML=`
+    <div class="st" onclick="document.getElementById('story-inp').click()">
+      <div class="stRing add"><div class="stAv" style="background:var(--og);border-color:var(--bg)">
+        <svg viewBox="0 0 24 24" width="22" height="22" stroke="var(--o)" fill="none" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+      </div></div>
+      <div class="stName">Your Story</div>
+    </div>`+
+  others.map(x=>`<div class="st" onclick="viewStory('${x.id}')">
+    <div class="stRing"><div class="stAv">${x.avatar?`<img src="${x.avatar}">`:(x.emoji||'👤')}</div></div>
+    <div class="stName">${x.name.split(' ')[0]}</div>
+  </div>`).join('');
+}
+window.addStory=function(inp){
+  if(!inp.files[0]) return;
+  const r=new FileReader();
+  r.onload=e=>{ toast('📸 Story posted!'); };
+  r.readAsDataURL(inp.files[0]);
+};
+window.viewStory=function(uid){ const u=getUser(uid); if(u) toast(`👁 ${u.name}'s story`); };
+
+// ═══════════════════════════════════════
+//  FEED
+// ═══════════════════════════════════════
+function renderFeed(){
+  const posts=[...DB.posts].sort((a,b)=>b.time-a.time);
+  if(!posts.length){
+    $('home-feed').innerHTML=`<div style="text-align:center;padding:40px;color:var(--t3);font-family:var(--ff);font-size:12px">No posts yet.<br>Be the first to Spark! ⚡</div>`;
+    return;
+  }
+  $('home-feed').innerHTML=posts.map(p=>{
+    const u=getUser(p.uid); if(!u) return '';
+    const myId=DB.currentUser;
+    const liked=(p.likes||[]).includes(myId);
+    return `<div class="post" id="post-${p.id}">
+      <div class="ph">
+        <div class="pav" onclick="openUserProfile('${u.id}')">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'⚡')}</div>
+        <div style="flex:1">
+          <div class="pname" onclick="openUserProfile('${u.id}')">${u.name}</div>
+          <div class="pskill">${p.skill||''} · ${timeAgo(p.time)}</div>
+        </div>
+      </div>
+      <div class="pimg" style="${p.image?'':'background:var(--s3);cursor:default;font-size:64px;display:flex;align-items:center;justify-content:center;'}">
+        ${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`:(u.emoji||'⚡')}
+        <div class="pimg-ov"></div><div class="pbadge">${p.skill||''}</div>
+      </div>
+      <div class="ptext">${p.text||''}</div>
+      <div class="ptags">${(p.tags||[]).map(t=>`<span class="ptag">${t}</span>`).join('')}</div>
+      <div class="pact">
+        <div class="ab ${liked?'liked':''}" onclick="toggleLike('${p.id}',this)">
+          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" ${liked?'fill="currentColor"':''}/>
+          </svg><span id="lk-${p.id}">${(p.likes||[]).length}</span>
+        </div>
+        <div class="ab" onclick="openComments('${p.id}')">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <span>${(p.comments||[]).length}</span>
+        </div>
+        <div class="xpb" style="margin-left:auto">+${p.xp||50} XP</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.toggleLike=function(pid,el){
+  const p=DB.posts.find(x=>x.id===pid); if(!p) return;
+  const myId=DB.currentUser;
+  const liked=(p.likes||[]).includes(myId);
+  p.likes=liked?(p.likes||[]).filter(x=>x!==myId):[...(p.likes||[]),myId];
+  saveDB();
+  el.className='ab'+(liked?'':' liked');
+  const path=el.querySelector('svg path');
+  if(path) path.setAttribute('fill',liked?'none':'currentColor');
+  $('lk-'+pid).textContent=(p.likes||[]).length;
+  if(!liked) addXP(5);
+};
+
+// ═══════════════════════════════════════
+//  COMMENTS
+// ═══════════════════════════════════════
+window.openComments=function(pid){
+  const p=DB.posts.find(x=>x.id===pid); if(!p) return;
+  openSheetEl();
+  const comments=p.comments||[];
+  $('sheet-content').innerHTML=`
+    <div class="sheet-title">Comments (${comments.length})</div>
+    <div style="margin-bottom:12px;max-height:220px;overflow-y:auto">
+      ${comments.length?comments.map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--b)">
+        <span style="font-family:var(--ff);font-weight:700;font-size:11px;color:var(--o)">@${c.username||'user'}</span>
+        <div style="font-size:12px;color:var(--t);margin-top:2px">${c.text}</div>
+      </div>`).join(''):'<div style="font-size:12px;color:var(--t3);padding:10px 0">No comments yet.</div>'}
+    </div>
+    <div style="display:flex;gap:8px">
+      <input class="fi" id="cmt-inp" placeholder="Add a comment..." style="flex:1;padding:10px 12px">
+      <button class="abtn" style="width:auto;padding:10px 16px;margin:0" onclick="submitComment('${pid}')">Post</button>
+    </div>
+    <button class="sheet-cancel" onclick="closeSheet()" style="margin-top:8px">Close</button>`;
+};
+window.submitComment=function(pid){
+  const txt=$('cmt-inp')?.value?.trim(); if(!txt) return;
+  const u=me();
+  const p=DB.posts.find(x=>x.id===pid); if(!p) return;
+  p.comments=[...(p.comments||[]),{uid:DB.currentUser,username:u.username,text:txt,time:Date.now()}];
+  saveDB(); addXP(10); toast('💬 Comment posted! +10 XP'); closeSheet();
+};
+
+// ═══════════════════════════════════════
+//  CREATE POST
+// ═══════════════════════════════════════
+let postImageData=null, selectedCategory='';
+window.renderCatPills=function(){
+  const cats=[{e:'🎮',n:'Gaming'},{e:'💻',n:'Coding'},{e:'🎨',n:'Design'},{e:'🎵',n:'Music'},{e:'🤖',n:'AI/ML'},{e:'🏋️',n:'Fitness'},{e:'🎤',n:'Speaking'},{e:'📊',n:'Business'}];
+  $('cat-pills').innerHTML=cats.map(c=>`<div class="cpill" onclick="selCat(this,'${c.n}')">${c.e} ${c.n}</div>`).join('');
+};
+window.selCat=function(el,cat){ document.querySelectorAll('#cat-pills .cpill').forEach(p=>p.classList.remove('sel')); el.classList.add('sel'); selectedCategory=cat; };
+window.selPill=function(el){ el.parentElement.querySelectorAll('.cpill').forEach(p=>p.classList.remove('sel')); el.classList.add('sel'); };
+window.previewPost=function(inp){
+  if(!inp.files[0]) return;
+  const r=new FileReader(); r.onload=e=>{ postImageData=e.target.result; $('drop-inner').innerHTML=`<img src="${e.target.result}" class="drop-preview">`; }; r.readAsDataURL(inp.files[0]);
+};
+window.publishPost=function(){
+  const caption=$('post-caption').value.trim();
+  if(!caption){ toast('⚠️ Write something about your skill!'); return; }
+  if(!selectedCategory){ toast('⚠️ Choose a skill category'); return; }
+  const u=me();
+  const pid='p_'+Date.now();
+  DB.posts.unshift({id:pid,uid:DB.currentUser,text:caption,image:postImageData||'',tags:caption.match(/#\w+/g)||['#'+selectedCategory],skill:selectedCategory,likes:[],comments:[],xp:50,time:Date.now()});
+  // update user post count
+  if(!u.posts) u.posts=[];
+  u.posts.push(pid);
+  addXP(50); saveDB();
+  $('post-caption').value=''; postImageData=null; selectedCategory='';
+  $('drop-inner').innerHTML=`<div style="font-size:40px;margin-bottom:10px">📸</div><div style="font-family:var(--ff);font-weight:700;font-size:15px;color:var(--t);margin-bottom:4px">Tap to upload</div><div style="font-size:12px;color:var(--t3)">Photo or Video</div>`;
+  document.querySelectorAll('#cat-pills .cpill').forEach(p=>p.classList.remove('sel'));
+  toast('🚀 Post shared! +50 XP! 🔥');
+  setTimeout(()=>window.go('home'),600);
+};
+
+// ═══════════════════════════════════════
+//  TRENDING
+// ═══════════════════════════════════════
+function renderTrending(){
+  const users=DB.users.filter(u=>u.id!==DB.currentUser).sort((a,b)=>(b.xp||0)-(a.xp||0)).slice(0,6);
+  $('trend-row').innerHTML=users.map(x=>{
+    const isFollowing=(me()?.following||[]).includes(x.id);
+    return `<div class="tcard" onclick="openUserProfile('${x.id}')">
+      <div class="tav">${x.avatar?`<img src="${x.avatar}">`:(x.emoji||'👤')}</div>
+      <div style="flex:1;min-width:0"><div class="tname">@${x.username}</div><div class="tmeta">${(x.skills||[])[0]||'Talent'} · Lv ${x.level||1}</div></div>
+      <button class="flw ${isFollowing?'friends':''}" onclick="event.stopPropagation();toggleFollow('${x.id}',this)">${isFollowing?'Following':'Follow +'}</button>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+//  FIND / USERS
+// ═══════════════════════════════════════
+window.renderUsers=function(){
+  const q=($('s-inp')||{value:''}).value.toLowerCase();
+  let users=DB.users.filter(u=>u.id!==DB.currentUser);
+  if(q) users=users.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)||(u.skills||[]).some(s=>s.toLowerCase().includes(q)));
+  if(currentFilter!=='All') users=users.filter(u=>(u.skills||[]).includes(currentFilter));
+  $('user-list').innerHTML=users.length?users.map(u=>{
+    const isFollowing=(me()?.following||[]).includes(u.id);
+    return `<div class="urow" onclick="openUserProfile('${u.id}')">
+      <div class="urav">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤')}</div>
+      <div style="flex:1"><div class="urname">${u.name} <span style="font-size:10px;color:var(--t3)">@${u.username}</span></div>
+      <div class="urskill">${(u.skills||[]).join(' · ')||'No skills yet'}</div>
+      <div class="urxp">⚡ Lv ${u.level||1} · ${fmtNum(u.xp||0)} XP</div></div>
+      <button class="flw ${isFollowing?'friends':''}" onclick="event.stopPropagation();toggleFollow('${u.id}',this)">${isFollowing?'Following':'Follow +'}</button>
+    </div>`;
+  }).join(''):`<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">No users found</div>`;
+};
+window.setF=function(el,val){ document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); currentFilter=val; renderUsers(); };
+
+window.toggleFollow=function(uid,btn){
+  const u=me(); if(!u||uid===DB.currentUser) return;
+  const isFollowing=(u.following||[]).includes(uid);
+  if(isFollowing){
+    u.following=(u.following||[]).filter(x=>x!==uid);
+    const other=getUser(uid); if(other) other.followers=(other.followers||[]).filter(x=>x!==DB.currentUser);
+    btn.className='flw'; btn.textContent='Follow +';
+    toast('Unfollowed');
+  } else {
+    u.following=[...(u.following||[]),uid];
+    const other=getUser(uid); if(other) other.followers=[...(other.followers||[]),DB.currentUser];
+    btn.className='flw friends'; btn.textContent='Following';
+    addXP(10); toast('✅ Followed! +10 XP');
+    addNotification(uid,'follow',`@${u.username} started following you ⚡`);
+  }
+  saveDB();
+};
+
+// ═══════════════════════════════════════
+//  OTHER USER PROFILE
+// ═══════════════════════════════════════
+window.openUserProfile=function(uid){
+  if(uid===DB.currentUser){ window.go('profile'); return; }
+  viewingUser=uid;
+  prevScreen=document.querySelector('.scr.on')?.id?.replace('scr-','')||'home';
+  const u=getUser(uid); if(!u) return;
+  $('uv-title').textContent=u.name;
+  $('uv-name').textContent=u.name;
+  $('uv-handle').textContent=`@${u.username}${u.location?' · '+u.location:''}`;
+  $('uv-bio').textContent=u.bio||'';
+  $('uv-followers').textContent=fmtNum((u.followers||[]).length);
+  $('uv-following').textContent=fmtNum((u.following||[]).length);
+  const userPosts=DB.posts.filter(p=>p.uid===uid);
+  $('uv-posts').textContent=userPosts.length;
+  $('uv-pic').innerHTML=u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤');
+  $('uv-skills').innerHTML=(u.skills||[]).map(s=>`<div class="sch"><span>${skillEmoji(s)}</span><span class="sch-n">${s}</span></div>`).join('');
+  const isFollowing=(me()?.following||[]).includes(uid);
+  $('uv-follow-btn').textContent=isFollowing?'Following':'Follow +';
+  $('uv-follow-btn').className='uv-follow'+(isFollowing?' friends':'');
+  if(u.banner) $('uv-banner').style.background=`url(${u.banner}) center/cover`;
+  $('uv-posts-grid').innerHTML=userPosts.length
+    ?userPosts.map(p=>`<div class="pgitem">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover">`:(u.emoji||'⚡')}</div>`).join('')
+    :`<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--t3);font-size:12px;font-family:var(--ff)">No posts yet</div>`;
+  showScreen('userprofile');
+};
+window.uvToggleFollow=function(){ const btn=$('uv-follow-btn'); if(viewingUser) toggleFollow(viewingUser,btn); };
+window.uvMessage=function(){ if(viewingUser) openChatWith(viewingUser); };
+
+// ═══════════════════════════════════════
+//  PROFILE
+// ═══════════════════════════════════════
+function renderProfile(){
+  const u=me(); if(!u) return;
+  const posts=DB.posts.filter(p=>p.uid===DB.currentUser);
+  const pct=Math.min(100,Math.round(((u.xp||0)%1000)/10));
+  $('p-pic').innerHTML=u.avatar?`<img src="${u.avatar}">`:(u.emoji||'⚡');
+  if(u.banner) $('p-banner').style.background=`url(${u.banner}) center/cover`;
+  $('p-name').textContent=u.name||'';
+  $('p-handle').textContent=`@${u.username||''}${u.location?' · '+u.location:''}`;
+  $('p-bio').textContent=u.bio||'';
+  $('p-posts').textContent=posts.length;
+  $('p-followers').textContent=fmtNum((u.followers||[]).length);
+  $('p-following').textContent=fmtNum((u.following||[]).length);
+  $('p-level').textContent=`⚡ Level ${u.level||1} — ${levelTitle(u.level||1)}`;
+  $('p-xp-txt').textContent=`${(u.xp||0)%1000} / 1000 XP`;
+  $('p-xp-fill').style.width=pct+'%';
+  $('p-skill-chips').innerHTML=(u.skills||[]).map(s=>`<div class="sch"><span>${skillEmoji(s)}</span><span class="sch-n">${s}</span></div>`).join('');
+  $('my-posts-grid').innerHTML=posts.length
+    ?posts.map(p=>`<div class="pgitem">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover">`:(u.emoji||'⚡')}</div>`).join('')
+    :`<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--t3);font-size:12px;font-family:var(--ff)">No posts yet. Tap ⚡ to create!</div>`;
+}
+window.showFollowers=function(){ toast(`👥 ${fmtNum((me()?.followers||[]).length)} followers`); };
+
+// ═══════════════════════════════════════
+//  EDIT PROFILE
+// ═══════════════════════════════════════
+const ALL_SKILLS=['Gaming','Coding','Design','Music','AI/ML','Fitness','Speaking','Business','Art','Photography','Writing','Cooking'];
+window.openEditProfile=function(){
+  const u=me(); if(!u) return;
+  $('ep-name').value=u.name||''; $('ep-user').value=u.username||''; $('ep-bio').value=u.bio||'';
+  $('ep-loc').value=u.location||''; $('ep-web').value=u.website||'';
+  if(u.avatar){ $('edit-av-preview').src=u.avatar; $('edit-av-preview').style.display='block'; $('edit-av-em').style.display='none'; }
+  else{ $('edit-av-em').textContent=u.emoji||'⚡'; $('edit-av-em').style.display='block'; $('edit-av-preview').style.display='none'; }
+  $('ep-skills').innerHTML=ALL_SKILLS.map(s=>`<div class="skill-tog ${(u.skills||[]).includes(s)?'sel':''}" onclick="this.classList.toggle('sel')">${skillEmoji(s)} ${s}</div>`).join('');
+};
+window.previewAvatar=function(inp){ if(!inp.files[0]) return; const r=new FileReader(); r.onload=e=>{ $('edit-av-preview').src=e.target.result; $('edit-av-preview').style.display='block'; $('edit-av-em').style.display='none'; }; r.readAsDataURL(inp.files[0]); };
+window.previewBanner=function(inp){ if(!inp.files[0]) return; const r=new FileReader(); r.onload=e=>{ $('edit-banner-preview').src=e.target.result; $('edit-banner-preview').style.display='block'; $('edit-banner-lbl').style.display='none'; }; r.readAsDataURL(inp.files[0]); };
+window.saveProfile=function(){
+  const u=me(); if(!u) return;
+  const name=$('ep-name').value.trim();
+  const username=$('ep-user').value.trim().toLowerCase().replace('@','');
+  const bio=$('ep-bio').value.trim();
+  const location=$('ep-loc').value.trim();
+  const website=$('ep-web').value.trim();
+  const skills=[...$('ep-skills').querySelectorAll('.sel')].map(el=>el.textContent.replace(/[^\w\/\s]/g,'').trim()).filter(Boolean);
+  if(!name){ toast('⚠️ Name required'); return; }
+  if(username!==u.username && DB.users.find(x=>x.username===username)){ toast('⚠️ Username taken'); return; }
+  const avatar=$('edit-av-preview').src.startsWith('data')?$('edit-av-preview').src:(u.avatar||'');
+  const banner=$('edit-banner-preview')?.src?.startsWith('data')?$('edit-banner-preview').src:(u.banner||'');
+  Object.assign(u,{name,username,bio,location,website,skills,avatar,banner});
+  saveDB(); toast('✅ Profile saved!'); window.go('profile');
+};
+
+// ═══════════════════════════════════════
+//  XP
+// ═══════════════════════════════════════
+function addXP(amt){
+  const u=me(); if(!u) return;
+  u.xp=(u.xp||0)+amt;
+  const newLevel=Math.floor(u.xp/1000)+1;
+  if(newLevel>u.level){ u.level=newLevel; toast(`🎉 Level Up! Level ${newLevel} — ${levelTitle(newLevel)}!`); }
+  saveDB(); renderGreet();
+}
+
+// ═══════════════════════════════════════
+//  COMMUNITIES
+// ═══════════════════════════════════════
+function renderCommunities(){
+  $('comm-grid').innerHTML=DB.communities.map(c=>{
+    const joined=(c.membersList||[]).includes(DB.currentUser);
+    return `<div class="ccard">
+      <span class="ce">${c.emoji}</span><div class="cname">${c.name}</div><div class="cdesc">${c.desc}</div>
+      <div class="cmem">👥 ${fmtNum(c.members||0)} members</div>
+      <div class="cjoin ${joined?'j':''}" onclick="joinComm('${c.id}',this,'${c.name}')">${joined?'Joined':'Join'}</div>
+    </div>`;
+  }).join('');
+}
+window.joinComm=function(id,btn,name){
+  const c=DB.communities.find(x=>x.id===id); if(!c) return;
+  const list=c.membersList||[];
+  const joined=list.includes(DB.currentUser);
+  c.membersList=joined?list.filter(x=>x!==DB.currentUser):[...list,DB.currentUser];
+  c.members=(c.members||0)+(joined?-1:1);
+  saveDB(); btn.className='cjoin'+(joined?'':' j'); btn.textContent=joined?'Join':'Joined';
+  if(!joined){ addXP(15); toast(`🌐 Joined ${name}! +15 XP`); } else toast(`👋 Left ${name}`);
+};
+window.createComm=function(){
+  openSheetEl();
+  $('sheet-content').innerHTML=`
+    <div class="sheet-title">Create Community</div>
+    <div class="fg"><label class="fl">NAME</label><input class="fi" id="new-comm-name" placeholder="Community name"></div>
+    <div class="fg"><label class="fl">DESCRIPTION</label><input class="fi" id="new-comm-desc" placeholder="What's it about?"></div>
+    <div class="fg"><label class="fl">EMOJI</label><input class="fi" id="new-comm-emoji" placeholder="🌟" maxlength="2"></div>
+    <button class="abtn" style="margin-top:8px" onclick="submitComm()">Create ⚡</button>
+    <button class="sheet-cancel" onclick="closeSheet()">Cancel</button>`;
+};
+window.submitComm=function(){
+  const name=$('new-comm-name').value.trim(), desc=$('new-comm-desc').value.trim(), emoji=$('new-comm-emoji').value.trim()||'🌟';
+  if(!name){ toast('⚠️ Name required'); return; }
+  DB.communities.push({id:'c_'+Date.now(),name,desc,emoji,members:1,membersList:[DB.currentUser],createdBy:DB.currentUser});
+  addXP(30); saveDB(); toast(`🌐 "${name}" created! +30 XP`); closeSheet(); renderCommunities();
+};
+
+// ═══════════════════════════════════════
+//  CHALLENGES
+// ═══════════════════════════════════════
+const CHALLENGES=[
+  {id:'ch1',icon:'🎮',type:'GAMING',title:'Win 10 Ranked Matches',desc:'Prove your gaming skills',xp:500,timer:'2d 14h left'},
+  {id:'ch2',icon:'💻',type:'CODING',title:'Ship a Project in 48hrs',desc:'Code & deploy something real',xp:1000,timer:'1d 6h left'},
+  {id:'ch3',icon:'🎨',type:'DESIGN',title:'UI Redesign Challenge',desc:'Redesign any popular app',xp:750,timer:'3d left'},
+  {id:'ch4',icon:'🤖',type:'AI/ML',title:'Train Your First Model',desc:'Build & share an AI model',xp:800,timer:'5d left'},
+];
+function renderChallenges(){
+  const u=me();
+  $('ch-list').innerHTML=CHALLENGES.map((c,i)=>{
+    const joined=(u?.joinedChallenges||[]).includes(c.id);
+    return `<div class="chcard"><div class="chh">
+      <div class="chicon">${c.icon}</div>
+      <div style="flex:1"><div class="chtype">${c.type}</div><div class="chtitle">${c.title}</div><div class="chdesc">${c.desc}</div></div>
+    </div><div class="chf">
+      <div class="chxp">+${c.xp} XP</div><div class="chtimer">${c.timer}</div>
+      <button class="chjoin ${joined?'j':''}" id="cj-${c.id}" onclick="joinChallenge('${c.id}',this)">${joined?'Participating ✓':'Join'}</button>
+    </div></div>`;
+  }).join('');
+  // Leaderboard
+  const top=[...DB.users].sort((a,b)=>(b.xp||0)-(a.xp||0)).slice(0,8);
+  $('lb-list').innerHTML=top.map((u,i)=>`<div class="lbi">
+    <div class="lbrank" style="color:${i===0?'#FFD700':i===1?'#C0C0C0':i===2?'#CD7F32':'var(--t3)'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div>
+    <div class="lbav">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤')}</div>
+    <div class="lbname">${u.name}${u.id===DB.currentUser?' (You)':''}</div>
+    <div class="lbxp">⚡ ${fmtNum(u.xp||0)}</div>
+  </div>`).join('');
+}
+window.joinChallenge=function(id,btn){
+  const u=me(); if(!u) return;
+  if((u.joinedChallenges||[]).includes(id)){ toast('Already participating!'); return; }
+  u.joinedChallenges=[...(u.joinedChallenges||[]),id];
+  saveDB(); btn.className='chjoin j'; btn.textContent='Participating ✓';
+  addXP(10); toast('⚡ Challenge joined! +10 XP');
+};
+
+// ═══════════════════════════════════════
+//  DMs
+// ═══════════════════════════════════════
+function renderDMs(){
+  const u=me(); if(!u) return;
+  const following=u.following||[];
+  if(!following.length){ $('dm-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">Follow people to message them! 💬</div>`; return; }
+  $('dm-list').innerHTML=following.map(uid=>{
+    const other=getUser(uid); if(!other) return '';
+    const key=[DB.currentUser,uid].sort().join('_');
+    const msgs=(DB.messages[key]||[]);
+    const last=msgs[msgs.length-1];
+    return `<div class="dmitem" onclick="openChatWith('${uid}')">
+      <div class="dmav">${other.avatar?`<img src="${other.avatar}">`:(other.emoji||'👤')}<div class="dmon"></div></div>
+      <div style="flex:1"><div class="dmname">${other.name}</div><div class="dmprev">${last?last.text:'Say hi! 👋'}</div></div>
+      <div class="dmtime">${last?timeAgo(last.time):''}</div>
+    </div>`;
+  }).join('');
+}
+window.openChatWith=function(uid){
+  chatWith=uid; const u=getUser(uid); if(!u) return;
+  $('chat-name').textContent=u.name;
+  $('chat-av').innerHTML=u.avatar?`<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(u.emoji||'👤');
+  renderChatMsgs(); showScreen('chat');
+};
+function renderChatMsgs(){
+  const myId=DB.currentUser; if(!chatWith) return;
+  const key=[myId,chatWith].sort().join('_');
+  const msgs=DB.messages[key]||[];
+  const el=$('chat-msgs'); if(!el) return;
+  el.innerHTML=msgs.length
+    ?msgs.map(m=>`<div class="mb ${m.from===myId?'mout':'min'}">${m.text}<div class="mtime" style="text-align:${m.from===myId?'right':'left'}">${timeAgo(m.time)}</div></div>`).join('')
+    :`<div style="text-align:center;padding:30px;color:var(--t3);font-size:12px;font-family:var(--ff)">Start the conversation! 👋</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+window.sendMsg=function(){
+  const inp=$('chat-inp'); if(!inp) return;
+  const txt=inp.value.trim(); if(!txt||!chatWith) return;
+  const key=[DB.currentUser,chatWith].sort().join('_');
+  if(!DB.messages[key]) DB.messages[key]=[];
+  DB.messages[key].push({from:DB.currentUser,text:txt,time:Date.now(),read:false});
+  saveDB(); inp.value=''; renderChatMsgs();
+};
+
+// ═══════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════
+function addNotification(toUid, type, text){
+  DB.notifications.push({id:'n_'+Date.now(),to:toUid,type,text,time:Date.now(),read:false});
+  saveDB();
+}
+function renderNotifs(){
+  const myNotifs=(DB.notifications||[]).filter(n=>n.to===DB.currentUser).reverse();
+  $('notif-list').innerHTML=myNotifs.length
+    ?myNotifs.map(n=>`<div class="nitem ${n.read?'':'unread'}">
+      <div class="nic">🔔</div>
+      <div><div class="ntext">${n.text}</div><div class="ntime">${timeAgo(n.time)}</div></div>
+    </div>`).join('')
+    :`<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">No notifications yet ⚡</div>`;
+  // mark all read
+  DB.notifications.forEach(n=>{ if(n.to===DB.currentUser) n.read=true; });
+  saveDB();
+}
+
+// ═══════════════════════════════════════
+//  SHEET
+// ═══════════════════════════════════════
+window.openSheetEl=function(){ const el=$('sheet'); el.style.display='flex'; requestAnimationFrame(()=>el.classList.add('open')); };
+window.closeSheet=function(){ const el=$('sheet'); el.classList.remove('open'); setTimeout(()=>el.style.display='none',300); };
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  renderCatPills();
+  document.querySelectorAll('.scr').forEach(s=>{ if(s.id!=='scr-loading') s.style.display='none'; });
+  $('nav').style.display='none';
+});
+
+</script>
+</div>
+<div id="toast"></div>
+<input type="file" id="story-inp" accept="image/*" onchange="addStory(this)" style="display:none">
+</body>
+</html>
