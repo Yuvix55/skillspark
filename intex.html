@@ -5,6 +5,58 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>SkillSpark</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script type="module">
+// ══ FIREBASE SETUP ══
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, getDocs, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+const firebaseConfig={apiKey:"AIzaSyCvzq9la4C6zjuTQcswBn8k4CuZ8Px5F6Q",authDomain:"skillspark-2026.firebaseapp.com",projectId:"skillspark-2026",storageBucket:"skillspark-2026.firebasestorage.app",messagingSenderId:"133702543176",appId:"1:133702543176:web:5a39849f573401f449b57d"};
+const fbApp=initializeApp(firebaseConfig);
+const fbAuth=getAuth(fbApp);
+const fbDb=getFirestore(fbApp);
+// ══ EXPOSE FIREBASE TO WINDOW (module→global bridge) ══
+window._fbAuth=fbAuth; window._fbDb=fbDb;
+window._createUser=createUserWithEmailAndPassword;
+window._signIn=signInWithEmailAndPassword;
+window._signOut=signOut;
+window._googleProvider=new GoogleAuthProvider();
+window._signInPopup=signInWithPopup;
+window._resetPassword=sendPasswordResetEmail;
+window._doc=doc; window._setDoc=setDoc; window._getDoc=getDoc;
+window._updateDoc=updateDoc; window._collection=collection;
+window._addDoc=addDoc; window._getDocs=getDocs;
+window._serverTimestamp=serverTimestamp;
+window._onSnapshot=onSnapshot;
+const fbStorage=getStorage(fbApp);
+window._fbStorage=fbStorage;
+window._storageRef=storageRef;
+window._uploadBytes=uploadBytes;
+window._getDownloadURL=getDownloadURL;
+
+// ══ AUTH STATE — wait for DOM ready so DB is available ══
+window.addEventListener('load', ()=>{
+  onAuthStateChanged(fbAuth,async(user)=>{
+    if(user){
+      try{
+        const snap=await getDoc(doc(fbDb,"users",user.uid));
+        if(snap.exists()){const d=snap.data();const ex=window.DB.users.find(u=>u.id===user.uid);if(!ex)window.DB.users.push({...d,id:user.uid});else Object.assign(ex,d);}
+        window.DB.currentUser=user.uid;
+        const usersSnap=await getDocs(collection(fbDb,"users"));
+        usersSnap.forEach(d=>{const ud={...d.data(),id:d.id};const ex=window.DB.users.find(u=>u.id===d.id);if(!ex)window.DB.users.push(ud);else Object.assign(ex,ud);});
+        const u=window.DB.users.find(u=>u.id===user.uid);
+        if(u){if(!window.DB.friends[user.uid])window.DB.friends[user.uid]=u.friends||[];if(!window.DB.requests[user.uid])window.DB.requests[user.uid]=u.requests||[];}
+        const ps=await getDocs(collection(fbDb,"posts"));
+        window.DB.posts=[];ps.forEach(d=>window.DB.posts.push({...d.data(),id:d.id}));
+        window.DB.posts.sort((a,b)=>(b.time||0)-(a.time||0));
+        const authScr=document.getElementById("scr-auth");
+        if(authScr && authScr.classList.contains("on"))enterApp();
+        else renderAll();
+      }catch(e){console.error("Firebase load error:",e);}
+    }
+  });
+});
+</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -25,6 +77,9 @@ html,body{height:100%;overflow:hidden;background:#000;font-family:var(--fb);colo
 .scr::-webkit-scrollbar{display:none}
 .scr.on{opacity:1;pointer-events:all;transform:none}
 .scr.auth,.scr.editp,.scr.chat-scr{padding-bottom:0!important}
+.scr.chat-scr{display:flex!important;flex-direction:column!important;overflow:hidden!important;height:100dvh!important}
+.scr.chat-scr .msgs{flex:1!important;overflow-y:auto!important;min-height:0!important}
+.scr.chat-scr .chatbar{flex-shrink:0!important;position:relative!important;bottom:auto!important}
 
 /* NAV */
 #nav{position:absolute;bottom:0;left:0;right:0;height:var(--nh);background:rgba(7,7,7,.96);backdrop-filter:blur(20px);border-top:1px solid var(--b);display:flex;align-items:center;justify-content:space-around;z-index:200;padding:0 4px 4px}
@@ -117,7 +172,7 @@ html,body{height:100%;overflow:hidden;background:#000;font-family:var(--fb);colo
 .pname{font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t);cursor:pointer}
 .pskill{font-size:10px;color:var(--o);font-family:var(--ff);font-weight:600}
 .ptime{font-size:10px;color:var(--t3)}
-.pimg{width:100%;aspect-ratio:4/3;background:var(--s3);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:72px;cursor:pointer}
+.pimg{width:100%;background:var(--s3);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:72px;cursor:pointer}
 .pimg-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.7),transparent 55%)}
 .pbadge{position:absolute;top:10px;right:10px;background:var(--o);color:#fff;font-family:var(--ff);font-weight:700;font-size:9px;padding:3px 8px;border-radius:20px;letter-spacing:.4px}
 .ptext{font-size:13px;color:var(--t);line-height:1.55;padding:10px 16px 6px}
@@ -297,7 +352,7 @@ html,body{height:100%;overflow:hidden;background:#000;font-family:var(--fb);colo
 .min{background:var(--s3);color:var(--t);border-bottom-left-radius:3px;align-self:flex-start}
 .mout{background:var(--o);color:#fff;border-bottom-right-radius:3px;align-self:flex-end}
 .mtime{font-size:9px;opacity:.5;margin-top:3px;font-family:var(--ff)}
-.chatbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--b);background:var(--s1)}
+.chatbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--b);background:var(--s1);position:sticky;bottom:0;z-index:10}
 .ci{flex:1;background:var(--s2);border:1px solid var(--b);border-radius:24px;padding:9px 14px;font-size:13px;color:var(--t);font-family:var(--fb);outline:none;transition:all .2s}
 .ci:focus{border-color:var(--b2)}
 .ci::placeholder{color:var(--t3)}
@@ -336,55 +391,103 @@ html,body{height:100%;overflow:hidden;background:#000;font-family:var(--fb);colo
 
 /* FILE INPUT HIDDEN */
 input[type=file]{display:none}
+
+/* ── AI DISCOVERY ── */
+.ai-orb{width:68px;height:68px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--o2),var(--o),#c44000);margin:0 auto 14px;position:relative;animation:aipulse 2.5s ease-in-out infinite;box-shadow:0 0 26px rgba(255,98,0,.32)}
+@keyframes aipulse{0%,100%{box-shadow:0 0 26px rgba(255,98,0,.32),0 0 0 0 rgba(255,98,0,.18)}50%{box-shadow:0 0 38px rgba(255,98,0,.52),0 0 0 10px rgba(255,98,0,0)}}
+.ai-orb::after{content:'🧠';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px}
+.ai-hero{padding:18px 18px 12px;text-align:center}
+.ai-ht{font-family:var(--ff);font-weight:800;font-size:19px;color:var(--t);margin-bottom:5px}
+.ai-ht span{color:var(--o)}
+.ai-hs{font-size:12px;color:var(--t3);line-height:1.6;max-width:290px;margin:0 auto}
+.ai-chat{padding:0 14px;display:flex;flex-direction:column;gap:9px;min-height:160px}
+.ai-msg{max-width:87%;padding:10px 13px;border-radius:14px;font-size:13px;line-height:1.55;animation:up .3s var(--ease) both}
+.ai-msg.ai{background:var(--s2);border:1px solid var(--b);border-bottom-left-radius:3px;align-self:flex-start;color:var(--t)}
+.ai-msg.user{background:var(--o);border-bottom-right-radius:3px;align-self:flex-end;color:#fff}
+.ai-lbl{font-family:var(--ff);font-weight:700;font-size:9px;color:var(--o);letter-spacing:.8px;margin-bottom:4px}
+.ai-dots{display:flex;gap:4px;padding:3px 0}
+.ai-dots span{width:5px;height:5px;border-radius:50%;background:var(--o);animation:aibn .8s ease-in-out infinite}
+.ai-dots span:nth-child(2){animation-delay:.15s}
+.ai-dots span:nth-child(3){animation-delay:.3s}
+@keyframes aibn{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+.ai-skills{padding:0 14px 6px}
+.ai-rhdr{font-family:var(--ff);font-weight:700;font-size:10px;color:var(--o);letter-spacing:1px;margin-bottom:8px}
+.ai-sc{background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:11px 12px;margin-bottom:7px;position:relative;overflow:hidden}
+.ai-sc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--o);border-radius:2px 0 0 2px}
+.ai-sc.hg::before{background:linear-gradient(180deg,#FFD700,#FF6200)}
+.ai-stop{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.ai-sbdg{font-size:9px;font-family:var(--ff);font-weight:700;padding:2px 7px;border-radius:20px;margin-left:auto}
+.ai-sbdg.hidden{background:rgba(255,215,0,.15);color:#FFD700;border:1px solid rgba(255,215,0,.3)}
+.ai-sbdg.strong{background:var(--og);color:var(--o);border:1px solid var(--b2)}
+.ai-sbdg.emerging{background:rgba(100,200,255,.1);color:#64C8FF;border:1px solid rgba(100,200,255,.2)}
+.ai-sdesc{font-size:11px;color:var(--t2);line-height:1.5;margin-bottom:4px}
+.ai-sproof{font-size:10px;color:var(--t3);font-style:italic}
+.ai-sproof span{color:var(--o);font-style:normal}
+.ai-conf{display:flex;align-items:center;gap:6px;margin-top:6px}
+.ai-cbar{flex:1;height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
+.ai-cfill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--o),var(--o2));transition:width 1.2s ease}
+.ai-cpct{font-family:var(--ff);font-weight:700;font-size:10px;color:var(--o)}
+.ai-add-btn{width:100%;background:var(--o);border:none;border-radius:var(--r2);padding:12px;font-family:var(--ff);font-weight:700;font-size:13px;color:#fff;cursor:pointer;margin-top:8px;margin-bottom:4px;box-shadow:0 4px 16px rgba(255,98,0,.28);transition:transform .15s}
+.ai-add-btn:active{transform:scale(.98)}
+.ai-inp-area{padding:8px 14px 14px;background:var(--bg);position:relative;flex-shrink:0;z-index:10}
+.ai-sugs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.ai-sug{background:var(--s2);border:1px solid var(--b);border-radius:20px;padding:5px 11px;font-size:10px;font-family:var(--ff);font-weight:600;color:var(--t2);cursor:pointer;transition:all .18s;white-space:nowrap}
+.ai-sug:hover{border-color:var(--b2);color:var(--o)}
+.ai-row{display:flex;gap:8px;align-items:flex-end}
+.ai-inp{flex:1;background:var(--s2);border:1px solid var(--b);border-radius:12px;padding:10px 13px;font-size:13px;color:var(--t);font-family:var(--fb);outline:none;resize:none;line-height:1.4;max-height:80px;min-height:40px;transition:border-color .2s}
+.ai-inp:focus{border-color:var(--b2)}
+.ai-inp::placeholder{color:var(--t3)}
+.ai-send{width:40px;height:40px;border-radius:50%;background:var(--o);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-shadow:0 3px 12px rgba(255,98,0,.3);transition:all .18s}
+.ai-send:active{transform:scale(.9)}
+.ai-send:disabled{background:var(--s3);box-shadow:none;cursor:not-allowed}
+.ai-send svg{width:15px;height:15px;fill:#fff}
+
+/* AI DEEP DIVE BUTTON */
+.ai-deep-btn{width:100%;background:linear-gradient(90deg,#1a0800,#0d0d1a);border:1px solid var(--b2);border-radius:var(--r2);padding:10px 14px;font-family:var(--ff);font-weight:700;font-size:12px;color:var(--o);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:.3px;transition:all .2s}
+.ai-deep-btn:active{transform:scale(.98);background:var(--og)}
+
+/* AI DEEP DIVE SHEET */
+.dd-section{margin-bottom:14px;background:var(--s2);border:1px solid var(--b);border-radius:10px;overflow:hidden}
+.dd-sec-hdr{padding:9px 12px;background:var(--og2);border-bottom:1px solid var(--b2);font-family:var(--ff);font-weight:700;font-size:10px;color:var(--o);letter-spacing:.8px;display:flex;align-items:center;gap:6px}
+.dd-sec-body{padding:11px 13px;font-size:12px;color:var(--t2);line-height:1.7}
+.dd-loading{text-align:center;padding:28px 0}
+.dd-loading .ai-dots{justify-content:center;margin-top:10px}
+.dd-loading p{font-family:var(--ff);font-weight:600;font-size:12px;color:var(--o);margin-top:10px}
+.dd-skill-tag{display:inline-block;background:var(--og);border:1px solid var(--b2);border-radius:20px;padding:3px 10px;font-family:var(--ff);font-weight:600;font-size:10px;color:var(--o);margin:3px 3px 3px 0}
+.dd-earn{font-family:var(--ff);font-weight:800;font-size:18px;color:var(--o);margin:4px 0}
+.dd-scroll{max-height:68dvh;overflow-y:auto;scrollbar-width:none}
+.dd-scroll::-webkit-scrollbar{display:none}
 </style>
 </head>
 <body>
 <div id="root">
 
-<!-- LOADING SCREEN -->
-<div id="scr-loading" class="scr auth on" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px">
-  <div style="font-family:var(--ff);font-weight:800;font-size:32px;color:var(--o)">SkillSpark ⚡</div>
-  <div style="font-size:13px;color:var(--t3)">Loading...</div>
-  <div style="width:40px;height:40px;border:3px solid var(--b2);border-top-color:var(--o);border-radius:50%;animation:spin .8s linear infinite"></div>
-</div>
-
-<!-- AUTH -->
-<div id="scr-auth" class="scr auth" style="display:none;opacity:1;pointer-events:all;transform:none">
+<!-- ===================== AUTH ===================== -->
+<div id="scr-auth" class="scr auth on">
 <div class="auth-bg"></div>
 <div class="auth-inner">
 <div class="alogo">SkillSpark ⚡</div>
 <div class="atag">Show Your Skill. Spark Your Future.</div>
 <div class="atitle" id="auth-title">Join the talent revolution</div>
 <div class="asub" id="auth-sub">No degrees. No resumes. Just pure skill.</div>
-<div class="fg" id="a-name-fg"><label class="fl">NAME</label><input class="fi" id="a-name" placeholder="Your full name"></div>
+<div class="fg"><label class="fl">NAME</label><input class="fi" id="a-name" placeholder="Your full name"></div>
 <div class="fg" id="a-ug"><label class="fl">USERNAME</label><input class="fi" id="a-user" placeholder="@yourhandle"></div>
 <div class="fg"><label class="fl">EMAIL</label><input class="fi" id="a-email" type="email" placeholder="you@example.com"></div>
 <div class="fg"><label class="fl">PASSWORD</label><input class="fi" id="a-pass" type="password" placeholder="Minimum 6 characters"></div>
-<div id="auth-error" style="font-size:12px;color:#EF4444;font-family:var(--ff);margin-bottom:8px;display:none"></div>
-<button class="abtn" id="auth-btn" onclick="doEmailAuth()">Create Account 🚀</button>
-<div class="adiv">or</div>
+<button class="abtn" id="auth-btn" onclick="doAuth()">Create Account 🚀</button>
+<div class="adiv">or continue with</div>
 <div class="soc-row">
-<button class="soc-btn" id="google-btn" onclick="doGoogleAuth()">
-<svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-Continue with Google
+<button class="soc-btn" onclick="googleLogin()">
+<svg viewBox="0 0 24 24" width="16" height="16"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+Google
+</button>
+<button class="soc-btn" onclick="toast('🚧 GitHub OAuth coming soon! Abhi email use karo.')">
+<svg viewBox="0 0 24 24" width="16" height="16" fill="var(--t)"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+GitHub
 </button>
 </div>
+<div style="text-align:right;margin-top:-6px;margin-bottom:10px" id="forgot-wrap"></div>
 <div class="aswitch" id="auth-sw">Have an account? <a onclick="toggleAuth()">Sign In</a></div>
-</div>
-</div>
-
-<!-- USERNAME SETUP (after Google login, first time) -->
-<div id="scr-setup" class="scr auth" style="display:none;opacity:1;pointer-events:all;transform:none">
-<div class="auth-bg"></div>
-<div class="auth-inner">
-<div class="alogo">SkillSpark ⚡</div>
-<div class="atag">Almost there!</div>
-<div class="atitle">Pick your username</div>
-<div class="asub" id="setup-sub">This is how people will find you.</div>
-<div class="fg"><label class="fl">USERNAME</label><input class="fi" id="setup-user" placeholder="@yourhandle" oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'').toLowerCase()"></div>
-<div class="fg"><label class="fl">DISPLAY NAME</label><input class="fi" id="setup-name" placeholder="Your full name"></div>
-<div id="setup-error" style="font-size:12px;color:#EF4444;font-family:var(--ff);margin-bottom:8px;display:none"></div>
-<button class="abtn" onclick="finishSetup()">Let's Go ⚡</button>
 </div>
 </div>
 
@@ -575,20 +678,67 @@ Continue with Google
 </div>
 
 <!-- ===================== CHAT ===================== -->
-<div id="scr-chat" class="scr chat-scr" style="display:flex;flex-direction:column">
-<div class="chat-tb">
-<div class="back" onclick="go('dms')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+<div id="scr-chat" class="scr chat-scr" style="display:flex;flex-direction:column;height:100dvh;overflow:hidden;padding-bottom:0!important">
+<div class="chat-tb" style="flex-shrink:0">
+<div class="back" onclick="if(_chatUnsub){_chatUnsub();_chatUnsub=null;}go('dms')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
 <div class="chat-av" id="chat-av">?</div>
 <div style="flex:1"><div class="chat-name" id="chat-name">—</div><div class="chat-status" id="chat-status">● Online</div></div>
 </div>
-<div class="msgs" id="chat-msgs"></div>
-<div class="chatbar">
+<div class="msgs" id="chat-msgs" style="flex:1;overflow-y:auto;min-height:0"></div>
+<div class="chatbar" style="flex-shrink:0;position:relative;bottom:auto">
 <input class="ci" id="chat-inp" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMsg()">
 <button class="csend" onclick="sendMsg()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
 </div>
 </div>
 
+<!-- ===================== AI DISCOVERY ===================== -->
+<div id="scr-ai" class="scr" style="display:flex;flex-direction:column;height:calc(100dvh - var(--nh));overflow:hidden;padding-bottom:0">
+<div class="tb"><div class="logo">AI Discovery 🧠</div></div>
+<div style="flex:1;overflow-y:auto;padding-bottom:8px;min-height:0" id="ai-scroll-area">
+<div class="ai-hero">
+  <div class="ai-orb"></div>
+  <div class="ai-ht">AI <span>Skill Discovery</span></div>
+  <div class="ai-hs">Tell me about yourself — I'll find skills you didn't know you had! 🔍</div>
+</div>
+<div class="ai-chat" id="ai-chat"></div>
+<div class="ai-skills" id="ai-skills"></div>
+</div>
+<div class="ai-inp-area" style="position:relative;bottom:auto;flex-shrink:0">
+  <div class="ai-sugs" id="ai-sugs">
+    <div class="ai-sug" onclick="aiUseSug(this)">🎮 I love gaming</div>
+    <div class="ai-sug" onclick="aiUseSug(this)">💻 Learning to code</div>
+    <div class="ai-sug" onclick="aiUseSug(this)">🎨 I draw/design</div>
+    <div class="ai-sug" onclick="aiUseSug(this)">📱 Social media creator</div>
+    <div class="ai-sug" onclick="aiUseSug(this)">🍳 I cook a lot</div>
+  </div>
+  <div class="ai-row">
+    <textarea class="ai-inp" id="ai-inp" placeholder="Tell me about yourself..." rows="1"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend()}"></textarea>
+    <button class="ai-send" id="ai-send-btn" onclick="aiSend()">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+    </button>
+  </div>
+</div>
+</div>
+
 <!-- ===================== NAV ===================== -->
+<!-- ===================== COMM CHAT ===================== -->
+<div id="scr-comm-chat" class="scr" style="display:flex;flex-direction:column;height:calc(100dvh - var(--nh));overflow:hidden">
+<div class="tb" style="display:flex;align-items:center;gap:10px">
+  <div onclick="go('communities')" style="cursor:pointer;color:var(--o);font-size:20px;padding:0 4px">‹</div>
+  <div class="logo" id="comm-chat-title" style="font-size:16px">Community Chat</div>
+</div>
+<div id="comm-chat-msgs" style="flex:1;overflow-y:auto;padding:12px 14px;min-height:0"></div>
+<div style="padding:8px 14px 14px;background:var(--bg);flex-shrink:0;display:flex;gap:8px;align-items:center">
+  <input id="comm-msg-inp" class="ci" placeholder="Message the community..." style="flex:1"
+    onkeydown="if(event.key==='Enter')sendCommMsg()">
+  <button class="csend" onclick="sendCommMsg()">
+    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+  </button>
+</div>
+</div>
+
 <div id="nav">
 <div class="ni on" id="ni-home" onclick="go('home')">
 <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -601,9 +751,13 @@ Continue with Google
 <div class="spark-btn" onclick="go('create')">
 <svg viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
 </div>
-<div class="ni" id="ni-communities" onclick="go('communities')">
+<div class="ni" id="ni-communities" onclick="go('communities');loadCommunities()">
 <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
 <span>TRIBES</span>
+</div>
+<div class="ni" id="ni-ai" onclick="go('ai');aiInit()">
+<svg viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="9" r="4"/><path d="M12 5v-2M12 13v2M8.5 7l-1.5-1.5M15.5 7l1.5-1.5"/><path d="M6 19c0-3.31 2.69-6 6-6s6 2.69 6 6"/><circle cx="12" cy="9" r="1.5" fill="currentColor" stroke="none"/></svg>
+<span>AI</span>
 </div>
 <div class="ni" id="ni-profile" onclick="go('profile')">
 <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -623,775 +777,1685 @@ Continue with Google
 <input type="file" id="story-inp" accept="image/*" onchange="addStory(this)">
 
 </div><!-- #root -->
-<style>
-@keyframes spin{to{transform:rotate(360deg)}}
-.scr-loading-hide{display:none!important}
-</style>
 
-<!-- FIREBASE SDKs -->
-<!-- FIREBASE AUTH ONLY (no Firestore needed) -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCvzq9la4C6zjuTQcswBn8k4CuZ8Px5F6Q",
-  authDomain: "skillspark-2026.firebaseapp.com",
-  projectId: "skillspark-2026",
-  storageBucket: "skillspark-2026.firebasestorage.app",
-  messagingSenderId: "133702543176",
-  appId: "1:133702543176:web:5a39849f573401f449b57d"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
-
-// ═══════════════════════════════════════
-//  localStorage DB (all app data)
-// ═══════════════════════════════════════
+<script>
+/* ════════════════════════════════════════
+   STATE — all stored in localStorage
+════════════════════════════════════════ */
 let DB = {
-  users: [], currentUser: null, posts: [],
-  requests: {}, friends: {}, messages: {},
-  communities: [], challenges: [], notifications: [], stories: {}
+  users: [],        // registered accounts
+  currentUser: null,// logged-in uid
+  posts: [],        // all posts
+  requests: {},     // uid -> [from_uid, ...]
+  friends: {},      // uid -> [uid, ...]
+  messages: {},     // "uid1_uid2" -> [{from,text,time}]
+  communities: [],
+  challenges: [],
+  notifications: [], // {id,to_uid,type,from_uid,text,time,read,req_id}
+  stories: {},       // uid -> [{emoji/img, time}]
 };
+let currentFilter = 'All';
+let chatWith = null;
+let viewingUser = null;
+let prevScreen = 'home';
 
-function saveDB(){ try{ localStorage.setItem('ss_db', JSON.stringify(DB)); }catch(e){} }
+function saveDB(){ /* data now in Firebase */ }
 function loadDB(){
   try{
-    const d = JSON.parse(localStorage.getItem('ss_db')||'{}');
-    if(d.users) DB = {...DB, ...d};
+    const raw = localStorage.getItem('ss_db');
+    if(raw){
+      const loaded = JSON.parse(raw);
+      // merge so new default fields survive
+      DB.users = loaded.users || [];
+      DB.currentUser = loaded.currentUser || null;
+      DB.posts = loaded.posts || [];
+      DB.requests = loaded.requests || {};
+      DB.friends = loaded.friends || {};
+      DB.messages = loaded.messages || {};
+      if(loaded.communities) DB.communities = loaded.communities;
+      if(loaded.challenges) DB.challenges = loaded.challenges;
+      DB.notifications = loaded.notifications || [];
+      DB.stories = loaded.stories || {};
+    }
   }catch(e){}
 }
 
-// ═══════════════════════════════════════
-//  HELPERS
-// ═══════════════════════════════════════
-function $(id){ return document.getElementById(id); }
-function showErr(id, msg){ const el=$(id); if(!el) return; el.textContent=msg; el.style.display=msg?'block':'none'; }
-function toast(msg){
-  const t=$('toast'); t.textContent=msg; t.classList.add('show');
-  clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2800);
-}
-function timeAgo(ts){
-  if(!ts) return ''; const d=(Date.now()-ts)/1000;
-  if(d<60) return 'just now'; if(d<3600) return Math.floor(d/60)+'m ago';
-  if(d<86400) return Math.floor(d/3600)+'h ago'; return Math.floor(d/86400)+'d ago';
-}
-function fmtNum(n){ if(!n) return '0'; if(n>=1000000) return (n/1000000).toFixed(1)+'M'; if(n>=1000) return (n/1000).toFixed(1)+'k'; return n; }
-function skillEmoji(s){ const m={Gaming:'🎮',Coding:'💻',Design:'🎨',Music:'🎵','AI/ML':'🤖',Fitness:'🏋️',Speaking:'🎤',Business:'📊',Art:'🖌️',Photography:'📷',Writing:'✍️',Cooking:'🍳'}; return m[s]||'⚡'; }
-function levelTitle(l){ const t=['Newcomer','Spark','Rising Star','Skilled','Expert','Elite','Master','Legend','Myth','Icon']; return t[Math.min((l||1)-1,9)]; }
-function getUser(uid){ return DB.users.find(u=>u.id===uid); }
-function me(){ return getUser(DB.currentUser); }
-
-// ═══════════════════════════════════════
-//  AUTH STATE
-// ═══════════════════════════════════════
+/* ════════════════════════════════════════
+   AUTH
+════════════════════════════════════════ */
 let authMode = 'signup';
-loadDB();
-
-onAuthStateChanged(auth, async (firebaseUser) => {
-  $('scr-loading').style.display = 'none';
-  if(firebaseUser){
-    // Find or create local profile
-    let localUser = DB.users.find(u => u.firebaseUid === firebaseUser.uid);
-    if(!localUser){
-      // Google user first time — show username setup
-      window._pendingFbUser = firebaseUser;
-      showSetup(firebaseUser);
-      return;
-    }
-    DB.currentUser = localUser.id;
-    saveDB();
-    enterApp();
-  } else {
-    DB.currentUser = null;
-    saveDB();
-    showAuthScreen();
-  }
-});
-
-function showAuthScreen(){
-  document.querySelectorAll('.scr').forEach(s=>s.style.display='none');
-  $('nav').style.display='none';
-  $('scr-auth').style.display='';
-}
-
-function showSetup(fbUser){
-  document.querySelectorAll('.scr').forEach(s=>s.style.display='none');
-  $('nav').style.display='none';
-  $('scr-setup').style.display='';
-  if($('setup-name')) $('setup-name').value = fbUser.displayName||'';
-}
-
-// ═══════════════════════════════════════
-//  TOGGLE AUTH MODE
-// ═══════════════════════════════════════
-window.toggleAuth = function(){
-  authMode = authMode==='signup'?'login':'signup';
-  showErr('auth-error','');
+function toggleAuth(){
+  authMode = authMode==='signup' ? 'login' : 'signup';
   if(authMode==='login'){
-    $('a-ug').style.display='none'; $('a-name-fg').style.display='none';
-    $('auth-btn').textContent='Sign In ⚡';
-    $('auth-title').textContent='Welcome back!';
-    $('auth-sub').textContent='Pick up where you left off.';
-    $('auth-sw').innerHTML='New here? <a onclick="toggleAuth()">Create Account</a>';
+    document.getElementById('a-ug').style.display='none';
+    document.getElementById('a-name').placeholder='Your full name (or leave blank)';
+    document.getElementById('auth-btn').textContent='Sign In ⚡';
+    document.getElementById('auth-title').textContent='Welcome back!';
+    document.getElementById('auth-sub').textContent='Pick up where you left off.';
+    document.getElementById('auth-sw').innerHTML='New here? <a onclick="toggleAuth()">Create Account</a>';
+    document.getElementById('forgot-wrap').innerHTML='<a onclick="forgotPassword()" style="font-size:11px;color:var(--o);cursor:pointer;font-family:var(--ff);font-weight:600">Forgot Password?</a>';
   } else {
-    $('a-ug').style.display='block'; $('a-name-fg').style.display='block';
-    $('auth-btn').textContent='Create Account 🚀';
-    $('auth-title').textContent='Join the talent revolution';
-    $('auth-sub').textContent='No degrees. No resumes. Just pure skill.';
-    $('auth-sw').innerHTML='Have an account? <a onclick="toggleAuth()">Sign In</a>';
+    document.getElementById('a-ug').style.display='block';
+    document.getElementById('auth-btn').textContent='Create Account 🚀';
+    document.getElementById('auth-title').textContent='Join the talent revolution';
+    document.getElementById('auth-sub').textContent='No degrees. No resumes. Just pure skill.';
+    document.getElementById('auth-sw').innerHTML='Have an account? <a onclick="toggleAuth()">Sign In</a>';
+    document.getElementById('forgot-wrap').innerHTML='';
   }
-};
-
-// ═══════════════════════════════════════
-//  EMAIL AUTH
-// ═══════════════════════════════════════
-window.doEmailAuth = async function(){
-  const email=$('a-email').value.trim(), pass=$('a-pass').value;
-  const name=$('a-name').value.trim();
-  showErr('auth-error','');
-  if(!email||!pass){ showErr('auth-error','Email & password required'); return; }
-  const btn=$('auth-btn'); btn.disabled=true; btn.textContent='Please wait...';
-
-  try{
-    if(authMode==='signup'){
-      const uname=$('a-user').value.trim().replace('@','').toLowerCase();
-      if(!name){ showErr('auth-error','Name is required'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
-      if(!uname){ showErr('auth-error','Username required'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
-      if(pass.length<6){ showErr('auth-error','Password min 6 characters'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
-      if(DB.users.find(u=>u.username===uname)){ showErr('auth-error','Username already taken'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
-      // Create Firebase Auth account
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
-      await updateProfile(cred.user, {displayName: name});
-      // Save to local DB
-      const uid = 'u_'+Date.now();
-      const user = {
-        id:uid, firebaseUid:cred.user.uid, name, username:uname, email,
-        bio:'Hey! I just joined SkillSpark ⚡', skills:[], emoji:'⚡',
-        xp:0, level:1, posts:[], followers:[], following:[],
-        location:'', website:'', avatar: cred.user.photoURL||'', banner:'',
-        joinedComms:[], joinedChallenges:[], createdAt: Date.now()
-      };
-      DB.users.push(user);
-      DB.requests[uid]=[]; DB.friends[uid]=[];
-      DB.currentUser = uid;
-      saveDB();
+}
+async function doAuth(){
+  const email = document.getElementById('a-email').value.trim();
+  const pass  = document.getElementById('a-pass').value;
+  const name  = document.getElementById('a-name').value.trim();
+  if(!email||!pass){ toast('⚠️ Email & password required'); return; }
+  const btn = document.getElementById('auth-btn');
+  btn.disabled=true; btn.textContent='⏳ Please wait...';
+  if(authMode==='signup'){
+    const uname = document.getElementById('a-user').value.trim().replace('@','');
+    if(!name){ toast('⚠️ Name required'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
+    if(!uname){ toast('⚠️ Username required'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
+    if(pass.length<6){ toast('⚠️ Password min 6 chars'); btn.disabled=false; btn.textContent='Create Account 🚀'; return; }
+    try{
+      const cred = await window._createUser(window._fbAuth, email, pass);
+      const uid = cred.user.uid;
+      const userData = {id:uid,name,username:uname,email,bio:'Hey! I just joined SkillSpark ⚡',skills:[],emoji:'⚡',xp:0,level:1,followers:[],following:[],location:'',website:'',avatar:'',banner:'',joinedComms:[],joinedChallenges:[]};
+      await window._setDoc(window._doc(window._fbDb,'users',uid), userData);
+      DB.users.push(userData);
+      DB.requests[uid]=[]; DB.friends[uid]=[]; DB.currentUser=uid;
       toast('🚀 Account created! Welcome to SkillSpark!');
-    } else {
-      // Sign in with Firebase
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
-      const localUser = DB.users.find(u=>u.firebaseUid===cred.user.uid);
-      if(!localUser){ showErr('auth-error','Account not found on this device. Please sign up again.'); btn.disabled=false; btn.textContent='Sign In ⚡'; return; }
-      DB.currentUser = localUser.id;
-      saveDB();
-      toast('✅ Welcome back, '+localUser.name.split(' ')[0]+'!');
+      setTimeout(enterApp,500);
+    }catch(e){
+      toast('⚠️ '+e.message);
+      btn.disabled=false; btn.textContent='Create Account 🚀';
     }
-  } catch(e){
-    const msgs = {
-      'auth/email-already-in-use':'Email already registered.',
-      'auth/invalid-email':'Invalid email.',
-      'auth/wrong-password':'Wrong password.',
-      'auth/user-not-found':'No account with this email.',
-      'auth/invalid-credential':'Wrong email or password.',
-      'auth/too-many-requests':'Too many attempts. Try later.',
-      'auth/network-request-failed':'No internet connection.',
-    };
-    showErr('auth-error', msgs[e.code]||e.message);
-    btn.disabled=false; btn.textContent=authMode==='signup'?'Create Account 🚀':'Sign In ⚡';
+  } else {
+    try{
+      await window._signIn(window._fbAuth, email, pass);
+      toast('✅ Signing in...');
+    }catch(e){
+      toast('⚠️ Wrong email or password');
+      btn.disabled=false; btn.textContent='Sign In ⚡';
+    }
   }
-};
-
-// ═══════════════════════════════════════
-//  GOOGLE AUTH
-// ═══════════════════════════════════════
-window.doGoogleAuth = async function(){
-  showErr('auth-error','');
-  const btn=$('google-btn'); btn.disabled=true; btn.textContent='Opening Google...';
+}
+async function forgotPassword(){
+  const email=document.getElementById('a-email').value.trim();
+  if(!email){ toast('⚠️ Pehle email daalo'); return; }
   try{
-    const result = await signInWithPopup(auth, googleProvider);
-    // onAuthStateChanged will handle next steps
-  } catch(e){
-    if(e.code !== 'auth/popup-closed-by-user'){
-      showErr('auth-error', e.message);
+    await window._resetPassword(window._fbAuth, email);
+    toast('📧 Password reset link bhej diya! Email check karo.');
+  }catch(e){
+    if(e.code==='auth/user-not-found') toast('⚠️ Yeh email registered nahi hai');
+    else toast('⚠️ '+e.message);
+  }
+}
+async function googleLogin(){
+  try{
+    const result = await window._signInPopup(window._fbAuth, window._googleProvider);
+    const user = result.user;
+    const snap = await window._getDoc(window._doc(window._fbDb,'users',user.uid));
+    let userData;
+    if(!snap.exists()){
+      const uname = user.email.split('@')[0].replace(/[^a-z0-9]/gi,'');
+      userData = {id:user.uid,name:user.displayName||uname,username:uname,email:user.email,bio:'Hey! I just joined SkillSpark ⚡',skills:[],emoji:'⚡',xp:0,level:1,followers:[],following:[],location:'',website:'',avatar:user.photoURL||'',banner:'',joinedComms:[],joinedChallenges:[]};
+      await window._setDoc(window._doc(window._fbDb,'users',user.uid), userData);
+    } else {
+      userData = {...snap.data(), id:user.uid};
     }
-    btn.disabled=false; btn.innerHTML=`<svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Continue with Google`;
-  }
-};
-
-// ═══════════════════════════════════════
-//  USERNAME SETUP (Google first time)
-// ═══════════════════════════════════════
-window.finishSetup = async function(){
-  const fbUser = window._pendingFbUser; if(!fbUser) return;
-  const uname=$('setup-user').value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
-  const name=$('setup-name').value.trim()||fbUser.displayName||'SkillSparker';
-  showErr('setup-error','');
-  if(!uname||uname.length<3){ showErr('setup-error','Username must be at least 3 characters'); return; }
-  if(DB.users.find(u=>u.username===uname)){ showErr('setup-error','Username already taken'); return; }
-  const uid='u_'+Date.now();
-  const user={
-    id:uid, firebaseUid:fbUser.uid, name, username:uname,
-    email:fbUser.email||'', bio:'Hey! I just joined SkillSpark ⚡',
-    skills:[], emoji:'⚡', xp:0, level:1, posts:[], followers:[], following:[],
-    location:'', website:'', avatar:fbUser.photoURL||'', banner:'',
-    joinedComms:[], joinedChallenges:[], createdAt:Date.now()
-  };
-  DB.users.push(user);
-  DB.requests[uid]=[]; DB.friends[uid]=[];
-  DB.currentUser=uid;
-  saveDB();
-  toast('🚀 Welcome to SkillSpark!');
-  enterApp();
-};
-
-// ═══════════════════════════════════════
-//  LOGOUT
-// ═══════════════════════════════════════
-window.logout = async function(){
+    // Load into DB and enter app
+    const ex = DB.users.find(u=>u.id===user.uid);
+    if(!ex) DB.users.push(userData); else Object.assign(ex, userData);
+    if(!DB.friends[user.uid]) DB.friends[user.uid]=userData.friends||[];
+    if(!DB.requests[user.uid]) DB.requests[user.uid]=userData.requests||[];
+    DB.currentUser = user.uid;
+    // Load all posts
+    const ps = await window._getDocs(window._collection(window._fbDb,'posts'));
+    DB.posts=[]; ps.forEach(d=>DB.posts.push({...d.data(),id:d.id}));
+    DB.posts.sort((a,b)=>(b.time||0)-(a.time||0));
+    toast('✅ Google login successful!');
+    setTimeout(enterApp, 500);
+  }catch(e){ toast('⚠️ '+e.message); }
+}
+function openSheet(provider){
+  const label = provider==='google' ? 'Google' : 'GitHub';
+  document.getElementById('sheet-content').innerHTML=`
+    <div style="text-align:center;padding:10px 0 20px">
+      <div style="font-size:40px;margin-bottom:14px">${provider==='google'?'🔵':'⚫'}</div>
+      <div class="sheet-title" style="margin-bottom:6px">Sign in with ${label}</div>
+      <div class="sheet-sub" style="margin-bottom:20px">${label} OAuth coming soon!<br>Abhi email &amp; password use karo.</div>
+      <button class="abtn" style="margin-bottom:0" onclick="closeSheet()">Theek hai ✓</button>
+    </div>`;
+  openSheetEl();
+}
+async function logout(){
   if(!confirm('Log out?')) return;
-  await signOut(auth);
-};
+  try{ await window._signOut(window._fbAuth); }catch(e){}
+  DB.currentUser = null;
+  DB.users = [];
+  DB.posts = [];
+  location.reload();
+}
 
-// ═══════════════════════════════════════
-//  ENTER APP
-// ═══════════════════════════════════════
+/* ════════════════════════════════════════
+   APP ENTRY
+════════════════════════════════════════ */
 function enterApp(){
-  document.querySelectorAll('.scr').forEach(s=>s.style.display='none');
-  $('nav').style.display='flex';
-  seedDemoData();
-  showScreen('home');
+  document.getElementById('nav').style.display='flex';
+  go('home');
+  renderAll();
+  setTimeout(updateNotifDotFromDB, 2000);
+}
+function me(){ return DB.users.find(u=>u.id===DB.currentUser); }
+function userById(id){ return DB.users.find(u=>u.id===id); }
+
+function renderAll(){
+  renderGreet();
+  renderStories();
+  renderTrending();
+  renderFeed();
+  renderProfile();
+  renderCommunities();
+  loadCommunities();
+  renderChallenges();
+  renderUsers();
+  renderNotifs();
+  renderDMs();
+  renderCatPills();
+  renderReqBanner();
+  updateNotifDot();
 }
 
-// ═══════════════════════════════════════
-//  SEED DEMO DATA (first time only)
-// ═══════════════════════════════════════
-function seedDemoData(){
-  if(DB._seeded) return;
-  DB._seeded=true;
-  const demos=[
-    {id:'demo1',firebaseUid:'demo1',name:'Aryan Sharma',username:'aryan_codes',email:'',bio:'Full stack dev 💻 Building cool stuff',skills:['Coding','AI/ML'],emoji:'💻',xp:2450,level:3,posts:[],followers:[DB.currentUser],following:[],location:'Mumbai',avatar:'',banner:'',joinedComms:[],joinedChallenges:[],createdAt:Date.now()-86400000*5},
-    {id:'demo2',firebaseUid:'demo2',name:'Priya Designs',username:'priya_ui',email:'',bio:'UI/UX Designer 🎨 Making things beautiful',skills:['Design','Art'],emoji:'🎨',xp:1800,level:2,posts:[],followers:[],following:[],location:'Bangalore',avatar:'',banner:'',joinedComms:[],joinedChallenges:[],createdAt:Date.now()-86400000*3},
-    {id:'demo3',firebaseUid:'demo3',name:'Raj Gamer',username:'raj_gamer99',email:'',bio:'Pro gamer 🎮 Top 0.1% ranked',skills:['Gaming'],emoji:'🎮',xp:3200,level:4,posts:[],followers:[],following:[],location:'Delhi',avatar:'',banner:'',joinedComms:[],joinedChallenges:[],createdAt:Date.now()-86400000*7},
-  ];
-  // Only add demos that don't exist
-  demos.forEach(d=>{ if(!DB.users.find(u=>u.id===d.id)) DB.users.push(d); });
-  // Add demo posts
-  if(!DB.posts.length){
-    DB.posts=[
-      {id:'p1',uid:'demo1',text:'Just built a full-stack chat app with React + Node.js! Real-time messages, rooms, and file sharing. 🚀 #Coding #WebDev',image:'',skill:'Coding',tags:['#Coding','#WebDev'],likes:[DB.currentUser],comments:[{uid:DB.currentUser,username:me()?.username||'you',text:'Amazing work! 🔥',time:Date.now()-3600000}],xp:50,time:Date.now()-7200000},
-      {id:'p2',uid:'demo2',text:'Redesigned the Zomato app UI — cleaner, faster, more intuitive. Figma file open source! 🎨 #Design #UI',image:'',skill:'Design',tags:['#Design','#UI'],likes:[],comments:[],xp:50,time:Date.now()-14400000},
-      {id:'p3',uid:'demo3',text:'Hit Challenger rank in League of Legends! 3 months of grinding paid off 🏆🎮 #Gaming #Esports',image:'',skill:'Gaming',tags:['#Gaming','#Esports'],likes:[DB.currentUser,'demo1','demo2'],comments:[],xp:50,time:Date.now()-28800000},
-    ];
-  }
-  if(!DB.communities.length){
-    DB.communities=[
-      {id:'c1',emoji:'🎮',name:'GamersHub',desc:'Gaming tricks & highlights',members:128,membersList:[]},
-      {id:'c2',emoji:'💻',name:'CodeForge',desc:'Build, ship, repeat',members:256,membersList:[]},
-      {id:'c3',emoji:'🎨',name:'DesignLab',desc:'Creative minds unite',members:94,membersList:[]},
-      {id:'c4',emoji:'🤖',name:'AI/ML Crew',desc:'Future of intelligence',members:312,membersList:[]},
-      {id:'c5',emoji:'🎵',name:'BeatMakers',desc:'Music production & covers',members:67,membersList:[]},
-      {id:'c6',emoji:'🏋️',name:'FitTribe',desc:'Fitness & health goals',members:145,membersList:[]},
-    ];
-  }
-  saveDB();
-}
-
-// ═══════════════════════════════════════
-//  SCREENS
-// ═══════════════════════════════════════
-let currentFilter='All', chatWith=null, viewingUser=null, prevScreen='home';
-
-function showScreen(name){
-  document.querySelectorAll('.scr').forEach(s=>{ s.style.display='none'; s.classList.remove('on'); });
+/* ════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════ */
+function go(name){
+  document.querySelectorAll('.scr').forEach(s=>s.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
-  const s=$('scr-'+name);
-  if(s){ s.style.display=''; setTimeout(()=>s.classList.add('on'),10); }
-  const n=$('ni-'+name); if(n) n.classList.add('on');
-  if(name==='home'){ renderGreet(); renderTrending(); renderFeed(); renderStories(); }
-  if(name==='profile') renderProfile();
-  if(name==='find') renderUsers();
-  if(name==='communities') renderCommunities();
-  if(name==='challenges') renderChallenges();
+  const s = document.getElementById('scr-'+name);
+  if(s) s.classList.add('on');
+  const n = document.getElementById('ni-'+name);
+  if(n) n.classList.add('on');
+  if(name==='notifications'){ renderNotifs(); markNotifsRead().then(updateNotifDot); }
   if(name==='dms') renderDMs();
-  if(name==='notifications'){ renderNotifs(); $('notif-dot').style.display='none'; }
+  if(name==='profile') renderProfile();
+  if(name==='home') renderFeed();
+  if(name==='find') renderUsers();
 }
-window.go=function(name){
-  prevScreen=document.querySelector('.scr.on')?.id?.replace('scr-','')||'home';
-  if(name==='editprofile'){ showScreen('editprofile'); openEditProfile(); return; }
-  showScreen(name);
-};
-window.goBack=function(){ showScreen(prevScreen); };
+function goBack(){ go(prevScreen); }
 
-// ═══════════════════════════════════════
-//  GREET
-// ═══════════════════════════════════════
+/* ════════════════════════════════════════
+   GREET CARD
+════════════════════════════════════════ */
 function renderGreet(){
   const u=me(); if(!u) return;
-  const pct=Math.min(100,Math.round(((u.xp||0)%1000)/10));
-  $('greet-card').innerHTML=`<div class="greet">
+  const pct = Math.min(100, Math.round((u.xp % 1000)/10));
+  document.getElementById('greet-card').innerHTML=`
+  <div class="greet">
     <div class="greet-hi">Hey, <span>${u.name.split(' ')[0]}</span> 👋</div>
     <div class="greet-row">
       <div class="gs"><div class="gs-n">${fmtNum(u.xp)}</div><div class="gs-l">TOTAL XP</div></div>
       <div class="gs"><div class="gs-n">Lvl ${u.level}</div><div class="gs-l">LEVEL</div></div>
-      <div class="gs"><div class="gs-n">${(u.followers||[]).length}</div><div class="gs-l">FOLLOWERS</div></div>
+      <div class="gs"><div class="gs-n">${(DB.friends[u.id]||[]).length}</div><div class="gs-l">FRIENDS</div></div>
+      <div class="gs"><div class="gs-n">${DB.posts.filter(p=>p.uid===u.id).length}</div><div class="gs-l">POSTS</div></div>
     </div>
     <div class="xpbar"><div class="xpfill" style="width:${pct}%"></div></div>
   </div>`;
 }
 
-// ═══════════════════════════════════════
-//  STORIES
-// ═══════════════════════════════════════
+/* ════════════════════════════════════════
+   STORIES
+════════════════════════════════════════ */
 function renderStories(){
   const u=me(); if(!u) return;
-  const others=DB.users.filter(x=>x.id!==u.id).slice(0,5);
-  $('stories-row').innerHTML=`
-    <div class="st" onclick="document.getElementById('story-inp').click()">
-      <div class="stRing add"><div class="stAv" style="background:var(--og);border-color:var(--bg)">
-        <svg viewBox="0 0 24 24" width="22" height="22" stroke="var(--o)" fill="none" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
-      </div></div>
-      <div class="stName">Your Story</div>
-    </div>`+
-  others.map(x=>`<div class="st" onclick="viewStory('${x.id}')">
-    <div class="stRing"><div class="stAv">${x.avatar?`<img src="${x.avatar}">`:(x.emoji||'👤')}</div></div>
-    <div class="stName">${x.name.split(' ')[0]}</div>
-  </div>`).join('');
+  let html=`<div class="st" onclick="document.getElementById('story-inp').click()">
+    <div class="stRing add"><div class="stAv" style="font-size:22px;color:var(--o)">+</div></div>
+    <div class="stName">You</div></div>`;
+  DB.users.filter(x=>x.id!==u.id && DB.stories[x.id]?.length).forEach(x=>{
+    const last=DB.stories[x.id].slice(-1)[0];
+    html+=`<div class="st" onclick="viewStory('${x.id}')">
+      <div class="stRing"><div class="stAv">${x.avatar?`<img src="${x.avatar}">`:(last.img?`<img src="${last.img}">`:(x.emoji||'👤'))}</div></div>
+      <div class="stName">${x.name.split(' ')[0]}</div></div>`;
+  });
+  document.getElementById('stories-row').innerHTML=html;
 }
-window.addStory=function(inp){
+function addStory(inp){
   if(!inp.files[0]) return;
   const r=new FileReader();
-  r.onload=e=>{ toast('📸 Story posted!'); };
+  r.onload=e=>{
+    const u=me();
+    if(!DB.stories[u.id]) DB.stories[u.id]=[];
+    DB.stories[u.id].push({img:e.target.result,time:Date.now()});
+    saveDB(); renderStories(); toast('📸 Story posted! +20 XP');
+  };
   r.readAsDataURL(inp.files[0]);
-};
-window.viewStory=function(uid){ const u=getUser(uid); if(u) toast(`👁 ${u.name}'s story`); };
+}
+function viewStory(uid){
+  const u=userById(uid);
+  const last=DB.stories[uid]?.slice(-1)[0];
+  openSheetEl();
+  document.getElementById('sheet-content').innerHTML=`
+    <div style="text-align:center">
+      <div style="font-family:var(--ff);font-weight:700;font-size:14px;color:var(--t);margin-bottom:12px">${u.name}'s Story</div>
+      ${last.img?`<img src="${last.img}" style="width:100%;max-height:260px;object-fit:cover;border-radius:var(--r);margin-bottom:12px">`
+               :`<div style="font-size:80px;margin-bottom:12px">${last.emoji||u.emoji}</div>`}
+      <div style="font-size:11px;color:var(--t3)">${timeAgo(last.time)}</div>
+    </div>
+    <button class="sheet-cancel" onclick="closeSheet()" style="margin-top:16px">Close</button>`;
+}
 
-// ═══════════════════════════════════════
-//  FEED
-// ═══════════════════════════════════════
-function renderFeed(){
-  const posts=[...DB.posts].sort((a,b)=>b.time-a.time);
-  if(!posts.length){
-    $('home-feed').innerHTML=`<div style="text-align:center;padding:40px;color:var(--t3);font-family:var(--ff);font-size:12px">No posts yet.<br>Be the first to Spark! ⚡</div>`;
-    return;
-  }
-  $('home-feed').innerHTML=posts.map(p=>{
-    const u=getUser(p.uid); if(!u) return '';
-    const myId=DB.currentUser;
-    const liked=(p.likes||[]).includes(myId);
-    return `<div class="post" id="post-${p.id}">
-      <div class="ph">
-        <div class="pav" onclick="openUserProfile('${u.id}')">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'⚡')}</div>
-        <div style="flex:1">
-          <div class="pname" onclick="openUserProfile('${u.id}')">${u.name}</div>
-          <div class="pskill">${p.skill||''} · ${timeAgo(p.time)}</div>
-        </div>
-      </div>
-      <div class="pimg" style="${p.image?'':'background:var(--s3);cursor:default;font-size:64px;display:flex;align-items:center;justify-content:center;'}">
-        ${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">`:(u.emoji||'⚡')}
-        <div class="pimg-ov"></div><div class="pbadge">${p.skill||''}</div>
-      </div>
-      <div class="ptext">${p.text||''}</div>
-      <div class="ptags">${(p.tags||[]).map(t=>`<span class="ptag">${t}</span>`).join('')}</div>
-      <div class="pact">
-        <div class="ab ${liked?'liked':''}" onclick="toggleLike('${p.id}',this)">
-          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" ${liked?'fill="currentColor"':''}/>
-          </svg><span id="lk-${p.id}">${(p.likes||[]).length}</span>
-        </div>
-        <div class="ab" onclick="openComments('${p.id}')">
-          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          <span>${(p.comments||[]).length}</span>
-        </div>
-        <div class="xpb" style="margin-left:auto">+${p.xp||50} XP</div>
-      </div>
+/* ════════════════════════════════════════
+   TRENDING
+════════════════════════════════════════ */
+function renderTrending(){
+  const u=me();
+  const others = DB.users.filter(x=>x.id!==u?.id).slice(0,6);
+  document.getElementById('trend-row').innerHTML=others.map(x=>{
+    const st=friendStatus(x.id);
+    return `<div class="tcard" onclick="openUserProfile('${x.id}')">
+      <div class="tav">${x.avatar?`<img src="${x.avatar}">`:(x.emoji||'👤')}</div>
+      <div style="flex:1;min-width:0"><div class="tname">@${x.username}</div><div class="tmeta">${x.skills[0]||'Talent'} · Lvl ${x.level}</div></div>
+      <button class="flw ${st}" onclick="event.stopPropagation();toggleConnect('${x.id}',this)">${stLabel(st)}</button>
     </div>`;
   }).join('');
 }
 
-window.toggleLike=function(pid,el){
+/* ════════════════════════════════════════
+   FEED
+════════════════════════════════════════ */
+async function renderFeed(){
+  if(window._getDocs && window._collection && window._fbDb){
+    try{
+      // Load users first so postHTML can find them
+      const usersSnap=await window._getDocs(window._collection(window._fbDb,'users'));
+      usersSnap.forEach(d=>{
+        const ud={...d.data(),id:d.id};
+        const ex=DB.users.find(u=>u.id===d.id);
+        if(!ex) DB.users.push(ud); else Object.assign(ex,ud);
+      });
+      // Load posts — merge, never wipe (prevents race condition on fresh publish)
+      const ps=await window._getDocs(window._collection(window._fbDb,'posts'));
+      ps.forEach(d=>{
+        const pd={...d.data(),id:d.id};
+        const ex=DB.posts.find(x=>x.id===d.id);
+        if(!ex) DB.posts.push(pd); else Object.assign(ex,pd);
+      });
+      DB.posts.sort((a,b)=>(b.time||0)-(a.time||0));
+    }catch(e){ console.error('Feed load error:',e); }
+  }
+  const el=document.getElementById('home-feed'); if(!el) return;
+  const sorted=[...DB.posts].sort((a,b)=>b.time-a.time);
+  const cards=sorted.map(p=>postHTML(p)).filter(Boolean);
+  if(!cards.length){ el.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--t3);font-family:var(--ff)">No posts yet. Be the first to Spark! ⚡</div>`; return; }
+  el.innerHTML=cards.join('');
+}
+function postHTML(p){
+  const u=userById(p.uid) || {id:p.uid,name:'SkillSpark User',username:'user',emoji:'👤',avatar:'',level:1,xp:0};
+  const liked=p.likes?.includes(me()?.id);
+  const saved=me()?.saved?.includes(p.id);
+  return `<div class="post" id="post-${p.id}">
+  <div class="ph">
+    <div class="pav" onclick="openUserProfile('${u.id}')">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤')}</div>
+    <div style="flex:1">
+      <div class="pname" onclick="openUserProfile('${u.id}')">${u.name}</div>
+      <div class="pskill">${p.skill} · ${timeAgo(p.time)}</div>
+    </div>
+    <div style="padding:6px;cursor:pointer;color:var(--t3)" onclick="postOptions('${p.id}')">···</div>
+  </div>
+  ${p.image
+    ? p.isVideo
+      ? `<div class="pimg" style="background:#000;min-height:200px;cursor:pointer" onclick="openPostFull('${p.id}')">
+          <video src="${p.image}" style="width:100%;max-height:500px;display:block;object-fit:contain" playsinline loop muted autoplay></video>
+          <div class="pimg-ov"></div>
+          <div class="pbadge">${p.skill}</div>
+          <div style="position:absolute;top:10px;left:10px;background:rgba(0,0,0,.6);border-radius:20px;padding:3px 8px;font-size:10px;color:#fff;font-family:var(--ff);font-weight:700">🎬 REEL</div>
+         </div>`
+      : `<div class="pimg" style="background:#000;min-height:200px" onclick="openPostFull('${p.id}')"><img src="${p.image}" style="width:100%;max-height:500px;object-fit:contain;display:block"><div class="pimg-ov"></div><div class="pbadge">${p.skill}</div></div>`
+    : `<div class="pimg" style="background:${p.bg||'var(--s3)'};cursor:default;font-size:64px"><span>${u.emoji}</span><div class="pimg-ov"></div><div class="pbadge">${p.skill}</div></div>`
+  }
+  <div class="ptext">${p.text}</div>
+  <div class="ptags">${(p.tags||[]).map(t=>`<span class="ptag">${t}</span>`).join('')}</div>
+  <div class="pact">
+    <div class="ab ${liked?'liked':''}" onclick="toggleLike('${p.id}',this)">
+      <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" ${liked?'fill="currentColor"':''}/>
+      </svg><span id="lk-${p.id}">${p.likes?.length||0}</span></div>
+    <div class="ab" onclick="openComments('${p.id}')">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span>${p.comments?.length||0}</span></div>
+    <div class="ab" onclick="sharePost('${p.id}')">
+      <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></div>
+    <div class="ab ${saved?'saved':''}" onclick="toggleSave('${p.id}',this)">
+      <svg viewBox="0 0 24 24" ${saved?'fill="currentColor"':''}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></div>
+    <div class="xpb">+${p.xp} XP</div>
+  </div>
+  <div style="padding:0 12px 12px">
+    <button class="ai-deep-btn" onclick="openAIDeepDive('${p.id}')">🤖 AI Deep Dive — ${p.skill}</button>
+  </div>
+  </div>`;
+}
+async function toggleLike(pid,el){
   const p=DB.posts.find(x=>x.id===pid); if(!p) return;
-  const myId=DB.currentUser;
-  const liked=(p.likes||[]).includes(myId);
-  p.likes=liked?(p.likes||[]).filter(x=>x!==myId):[...(p.likes||[]),myId];
-  saveDB();
-  el.className='ab'+(liked?'':' liked');
-  const path=el.querySelector('svg path');
-  if(path) path.setAttribute('fill',liked?'none':'currentColor');
-  $('lk-'+pid).textContent=(p.likes||[]).length;
-  if(!liked) addXP(5);
-};
-
-// ═══════════════════════════════════════
-//  COMMENTS
-// ═══════════════════════════════════════
-window.openComments=function(pid){
+  const uid=me().id;
+  if(!p.likes) p.likes=[];
+  const idx=p.likes.indexOf(uid);
+  if(idx>-1){ p.likes.splice(idx,1); el.classList.remove('liked'); }
+  else { p.likes.push(uid); el.classList.add('liked');
+    const svg=el.querySelector('svg path'); if(svg) svg.setAttribute('fill','currentColor');
+    addXP(5); addNotif(p.uid,'like',`❤️ <strong>${me().name}</strong> liked your post`);
+  }
+  document.getElementById('lk-'+pid).textContent=p.likes.length;
+  try{ await window._updateDoc(window._doc(window._fbDb,'posts',pid),{likes:p.likes}); }catch(e){}
+}
+async function toggleSave(pid,el){
+  const u=me(); if(!u.saved) u.saved=[];
+  const idx=u.saved.indexOf(pid);
+  if(idx>-1){ u.saved.splice(idx,1); el.classList.remove('saved'); toast('🗑️ Removed from saves'); }
+  else { u.saved.push(pid); el.classList.add('saved'); toast('🔖 Saved!'); }
+  try{ await window._updateDoc(window._doc(window._fbDb,'users',u.id),{saved:u.saved}); }catch(e){}
+}
+function sharePost(pid){
+  if(navigator.share){ navigator.share({title:'SkillSpark Post',url:window.location.href}); }
+  else { toast('🔗 Link copied!'); }
+}
+function postOptions(pid){
   const p=DB.posts.find(x=>x.id===pid); if(!p) return;
+  const isOwn = p.uid===me()?.id;
   openSheetEl();
-  const comments=p.comments||[];
-  $('sheet-content').innerHTML=`
-    <div class="sheet-title">Comments (${comments.length})</div>
-    <div style="margin-bottom:12px;max-height:220px;overflow-y:auto">
-      ${comments.length?comments.map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--b)">
-        <span style="font-family:var(--ff);font-weight:700;font-size:11px;color:var(--o)">@${c.username||'user'}</span>
-        <div style="font-size:12px;color:var(--t);margin-top:2px">${c.text}</div>
-      </div>`).join(''):'<div style="font-size:12px;color:var(--t3);padding:10px 0">No comments yet.</div>'}
-    </div>
-    <div style="display:flex;gap:8px">
-      <input class="fi" id="cmt-inp" placeholder="Add a comment..." style="flex:1;padding:10px 12px">
-      <button class="abtn" style="width:auto;padding:10px 16px;margin:0" onclick="submitComment('${pid}')">Post</button>
-    </div>
-    <button class="sheet-cancel" onclick="closeSheet()" style="margin-top:8px">Close</button>`;
-};
-window.submitComment=function(pid){
-  const txt=$('cmt-inp')?.value?.trim(); if(!txt) return;
-  const u=me();
+  document.getElementById('sheet-content').innerHTML=`
+    <div class="sheet-title">Post Options</div>
+    ${isOwn?`<div class="sacc" onclick="deletePost('${pid}');closeSheet()"><div class="sacc-av" style="background:rgba(239,68,68,.1)">🗑️</div><div><div class="sacc-nm" style="color:#EF4444">Delete Post</div></div></div>`:''}
+    <div class="sacc" onclick="reportPost('${pid}');closeSheet()"><div class="sacc-av">🚩</div><div><div class="sacc-nm">Report</div></div></div>
+    <button class="sheet-cancel" onclick="closeSheet()">Cancel</button>`;
+}
+async function deletePost(pid){
+  DB.posts=DB.posts.filter(p=>p.id!==pid);
+  try{
+    const {deleteDoc,doc}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await deleteDoc(doc(window._fbDb,'posts',pid));
+  }catch(e){}
+  renderFeed(); renderProfile(); toast('🗑️ Post deleted');
+}
+function reportPost(pid){ toast('🚩 Post reported. Thanks!'); }
+function openComments(pid){
   const p=DB.posts.find(x=>x.id===pid); if(!p) return;
-  p.comments=[...(p.comments||[]),{uid:DB.currentUser,username:u.username,text:txt,time:Date.now()}];
-  saveDB(); addXP(10); toast('💬 Comment posted! +10 XP'); closeSheet();
-};
+  if(!p.comments) p.comments=[];
+  openSheetEl();
+  const renderComs=()=>{
+    const u=me();
+    document.getElementById('sheet-content').innerHTML=`
+      <div class="sheet-title">Comments (${p.comments.length})</div>
+      <div style="max-height:280px;overflow-y:auto;margin-bottom:14px">
+        ${p.comments.length?p.comments.map(c=>{
+          const cu=userById(c.uid);
+          return `<div style="display:flex;gap:10px;margin-bottom:12px">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${cu?.emoji||'👤'}</div>
+            <div><div style="font-family:var(--ff);font-weight:700;font-size:12px;color:var(--o)">${cu?.name||'?'}</div>
+            <div style="font-size:12px;color:var(--t);margin-top:2px">${c.text}</div>
+            <div style="font-size:10px;color:var(--t3);margin-top:2px">${timeAgo(c.time)}</div></div>
+          </div>`;}).join('')
+        :`<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">No comments yet. Be first!</div>`}
+      </div>
+      <div style="display:flex;gap:8px">
+        <input id="com-inp" class="ci" placeholder="Add a comment..." style="flex:1" onkeydown="if(event.key==='Enter')submitComment('${pid}')">
+        <button class="csend" onclick="submitComment('${pid}')"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg></button>
+      </div>
+      <button class="sheet-cancel" onclick="closeSheet()" style="margin-top:10px">Close</button>`;
+  };
+  renderComs();
+  window._submitComment=async(pid2)=>{
+    const inp=document.getElementById('com-inp'); if(!inp) return;
+    const txt=inp.value.trim(); if(!txt) return;
+    p.comments.push({uid:me().id,text:txt,time:Date.now()});
+    addXP(10); addNotif(p.uid,'comment',`💬 <strong>${me().name}</strong> commented on your post`);
+    try{ await window._updateDoc(window._doc(window._fbDb,'posts',pid),{comments:p.comments}); }catch(e){}
+    renderComs(); toast('💬 Comment posted!');
+  };
+}
+function submitComment(pid){ if(window._submitComment) window._submitComment(pid); }
 
-// ═══════════════════════════════════════
-//  CREATE POST
-// ═══════════════════════════════════════
-let postImageData=null, selectedCategory='';
-window.renderCatPills=function(){
+/* ════════════════════════════════════════
+   CLOUDINARY IMAGE UPLOAD
+════════════════════════════════════════ */
+const CLOUDINARY_CLOUD='dxvoyusad';
+const CLOUDINARY_PRESET='skillspark';
+async function uploadToCloudinary(file, isVideo=false){
+  if(!file) return null;
+  const fd=new FormData();
+  fd.append('file',file);
+  fd.append('upload_preset',CLOUDINARY_PRESET);
+  fd.append('folder','skillspark');
+  const type=isVideo?'video':'image';
+  try{
+    const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${type}/upload`,{method:'POST',body:fd});
+    const data=await res.json();
+    if(data.secure_url) return {url:data.secure_url, isVideo};
+    console.error('Cloudinary error:',data);
+    return null;
+  }catch(e){
+    console.error('Cloudinary upload failed:',e);
+    return null;
+  }
+}
+
+/* ════════════════════════════════════════
+   CREATE POST
+════════════════════════════════════════ */
+let postImageData=null;
+let postImageFile=null;
+let postIsVideo=false;
+let selectedCategory='';
+function renderCatPills(){
   const cats=[{e:'🎮',n:'Gaming'},{e:'💻',n:'Coding'},{e:'🎨',n:'Design'},{e:'🎵',n:'Music'},{e:'🤖',n:'AI/ML'},{e:'🏋️',n:'Fitness'},{e:'🎤',n:'Speaking'},{e:'📊',n:'Business'}];
-  $('cat-pills').innerHTML=cats.map(c=>`<div class="cpill" onclick="selCat(this,'${c.n}')">${c.e} ${c.n}</div>`).join('');
-};
-window.selCat=function(el,cat){ document.querySelectorAll('#cat-pills .cpill').forEach(p=>p.classList.remove('sel')); el.classList.add('sel'); selectedCategory=cat; };
-window.selPill=function(el){ el.parentElement.querySelectorAll('.cpill').forEach(p=>p.classList.remove('sel')); el.classList.add('sel'); };
-window.previewPost=function(inp){
+  document.getElementById('cat-pills').innerHTML=cats.map(c=>`
+    <div class="cpill" onclick="selCat(this,'${c.n}')">${c.e} ${c.n}</div>`).join('');
+}
+function selCat(el,cat){
+  document.querySelectorAll('#cat-pills .cpill').forEach(p=>p.classList.remove('sel'));
+  el.classList.add('sel'); selectedCategory=cat;
+}
+function selPill(el){
+  const row=el.parentElement;
+  row.querySelectorAll('.cpill').forEach(p=>p.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function previewPost(inp){
   if(!inp.files[0]) return;
-  const r=new FileReader(); r.onload=e=>{ postImageData=e.target.result; $('drop-inner').innerHTML=`<img src="${e.target.result}" class="drop-preview">`; }; r.readAsDataURL(inp.files[0]);
-};
-window.publishPost=function(){
-  const caption=$('post-caption').value.trim();
+  postImageFile=inp.files[0];
+  postIsVideo=inp.files[0].type.startsWith('video/');
+  const r=new FileReader();
+  r.onload=e=>{
+    postImageData=e.target.result;
+    if(postIsVideo){
+      document.getElementById('drop-inner').innerHTML=`
+        <video src="${e.target.result}" style="width:100%;max-height:300px;border-radius:var(--r2);display:block" controls playsinline></video>
+        <div style="font-size:11px;color:var(--o);font-family:var(--ff);font-weight:600;margin-top:8px">🎬 Video ready</div>`;
+    } else {
+      document.getElementById('drop-inner').innerHTML=`<img src="${e.target.result}" class="drop-preview">`;
+    }
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+async function publishPost(){
+  const caption=document.getElementById('post-caption').value.trim();
   if(!caption){ toast('⚠️ Write something about your skill!'); return; }
   if(!selectedCategory){ toast('⚠️ Choose a skill category'); return; }
   const u=me();
-  const pid='p_'+Date.now();
-  DB.posts.unshift({id:pid,uid:DB.currentUser,text:caption,image:postImageData||'',tags:caption.match(/#\w+/g)||['#'+selectedCategory],skill:selectedCategory,likes:[],comments:[],xp:50,time:Date.now()});
-  // update user post count
-  if(!u.posts) u.posts=[];
-  u.posts.push(pid);
-  addXP(50); saveDB();
-  $('post-caption').value=''; postImageData=null; selectedCategory='';
-  $('drop-inner').innerHTML=`<div style="font-size:40px;margin-bottom:10px">📸</div><div style="font-family:var(--ff);font-weight:700;font-size:15px;color:var(--t);margin-bottom:4px">Tap to upload</div><div style="font-size:12px;color:var(--t3)">Photo or Video</div>`;
+  const btn=document.querySelector('#scr-create .abtn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Posting...'; }
+  const post={
+    id:'p'+Date.now(), uid:u.id, text:caption, image:postImageData,
+    tags:caption.match(/#\w+/g)||['#'+selectedCategory],
+    skill:selectedCategory, emoji:u.emoji, bg:'#0c0c0c',
+    type:'post', likes:[], comments:[], xp:50, time:Date.now()
+  };
+  // Cloudinary mein image/video upload karo (permanent URL milega)
+  if(postImageFile){
+    toast(postIsVideo?'⏳ Video upload ho rahi hai... thoda wait karo':'⏳ Image upload ho rahi hai...');
+    const result=await uploadToCloudinary(postImageFile, postIsVideo);
+    if(result){ post.image=result.url; post.isVideo=result.isVideo; }
+    else { post.image=null; post.isVideo=false; toast('⚠️ Upload nahi hua, bina media ke post hoga'); }
+  }
+  const fsPost={uid:post.uid, text:post.text, image:post.image||null, isVideo:post.isVideo||false,
+    tags:post.tags, skill:post.skill, emoji:post.emoji, bg:post.bg, type:post.type,
+    likes:[], comments:[], xp:post.xp, time:post.time};
+  try{
+    const ref = await window._addDoc(window._collection(window._fbDb,'posts'), fsPost);
+    post.id = ref.id;
+  }catch(e){
+    console.error('Post save error:',e);
+    toast('\u26a0\ufe0f Post save nahi hua: '+e.message);
+    if(btn){ btn.disabled=false; btn.textContent='Spark It! \u26a1'; }
+    return;
+  }
+  DB.posts.unshift(post);
+  addXP(50);
+  document.getElementById('post-caption').value='';
+  document.getElementById('drop-inner').innerHTML=`<div style="font-size:40px;margin-bottom:10px">📸</div><div style="font-family:var(--ff);font-weight:700;font-size:15px;color:var(--t);margin-bottom:4px">Tap to upload</div><div style="font-size:12px;color:var(--t3)">Photo or Video</div>`;
+  postImageData=null; postImageFile=null; postIsVideo=false; selectedCategory='';
+  if(btn){ btn.disabled=false; btn.textContent='Spark It! ⚡'; }
   document.querySelectorAll('#cat-pills .cpill').forEach(p=>p.classList.remove('sel'));
-  toast('🚀 Post shared! +50 XP! 🔥');
-  setTimeout(()=>window.go('home'),600);
-};
+  // Render from local data — no re-fetch needed
+  const el=document.getElementById('home-feed');
+  if(el){ const sorted=[...DB.posts].sort((a,b)=>b.time-a.time); el.innerHTML=sorted.map(p=>postHTML(p)).filter(Boolean).join(''); }
+  renderProfile();
+  toast('🚀 Post shared! +50 XP earned! 🔥');
+  setTimeout(()=>go('home'),600);
+}
 
-// ═══════════════════════════════════════
-//  TRENDING
-// ═══════════════════════════════════════
-function renderTrending(){
-  const users=DB.users.filter(u=>u.id!==DB.currentUser).sort((a,b)=>(b.xp||0)-(a.xp||0)).slice(0,6);
-  $('trend-row').innerHTML=users.map(x=>{
-    const isFollowing=(me()?.following||[]).includes(x.id);
-    return `<div class="tcard" onclick="openUserProfile('${x.id}')">
-      <div class="tav">${x.avatar?`<img src="${x.avatar}">`:(x.emoji||'👤')}</div>
-      <div style="flex:1;min-width:0"><div class="tname">@${x.username}</div><div class="tmeta">${(x.skills||[])[0]||'Talent'} · Lv ${x.level||1}</div></div>
-      <button class="flw ${isFollowing?'friends':''}" onclick="event.stopPropagation();toggleFollow('${x.id}',this)">${isFollowing?'Following':'Follow +'}</button>
+/* ════════════════════════════════════════
+   PROFILE
+════════════════════════════════════════ */
+function renderProfile(){
+  const u=me(); if(!u) return;
+  const myPosts=DB.posts.filter(p=>p.uid===u.id);
+  const pct=Math.min(100,Math.round((u.xp%1000)/10));
+  const el=id=>document.getElementById(id);
+  if(u.avatar){ el('p-pic').innerHTML=`<img src="${u.avatar}">`; }
+  else el('p-pic').textContent=u.emoji||'⚡';
+  if(u.banner){ el('p-banner').style.background=`url(${u.banner}) center/cover`; }
+  el('p-name').textContent=u.name;
+  el('p-handle').textContent=`@${u.username}${u.location?' · '+u.location:''}`;
+  el('p-bio').textContent=u.bio||'';
+  el('p-posts').textContent=myPosts.length;
+  el('p-followers').textContent=fmtNum(u.followers?.length||0);
+  el('p-following').textContent=fmtNum(u.following?.length||0);
+  el('p-level').textContent=`⚡ Level ${u.level} — ${levelTitle(u.level)}`;
+  el('p-xp-txt').textContent=`${u.xp%1000} / 1000 XP`;
+  el('p-xp-fill').style.width=pct+'%';
+  el('p-skill-chips').innerHTML=(u.skills||[]).map(s=>`
+    <div class="sch"><span>${skillEmoji(s)}</span><span class="sch-n">${s}</span><span class="sch-lv">${skillLevel(u,s)}</span></div>`).join('');
+  el('my-posts-grid').innerHTML=myPosts.length
+    ? myPosts.map(p=>`<div class="pgitem" onclick="openPostFull('${p.id}')">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover">`:(p.emoji||u.emoji)}</div>`).join('')
+    : `<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--t3);font-size:12px;font-family:var(--ff)">No posts yet. Tap ⚡ to create!</div>`;
+}
+function openPostFull(pid){
+  const p=DB.posts.find(x=>x.id===pid); if(!p) return;
+  const u=userById(p.uid)||{name:'User',emoji:'👤',avatar:''};
+  const liked=p.likes?.includes(me()?.id);
+  // Fullscreen overlay
+  const ov=document.createElement('div');
+  ov.id='post-full-ov';
+  ov.style.cssText='position:fixed;inset:0;background:#000;z-index:600;display:flex;flex-direction:column;overflow-y:auto';
+  ov.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(0,0,0,.9);position:sticky;top:0;z-index:1;border-bottom:1px solid var(--b)">
+      <div onclick="document.getElementById('post-full-ov').remove()" style="cursor:pointer;padding:6px;color:var(--t2)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </div>
+      <div style="width:34px;height:34px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:16px;border:2px solid var(--b2)">
+        ${u.avatar?`<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(u.emoji||'👤')}
+      </div>
+      <div>
+        <div style="font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t)">${u.name}</div>
+        <div style="font-size:10px;color:var(--o)">${p.skill} · ${timeAgo(p.time)}</div>
+      </div>
+    </div>
+    ${p.image
+      ? p.isVideo
+        ? `<div style="background:#000;display:flex;align-items:center;justify-content:center">
+            <video src="${p.image}" style="width:100%;max-height:85vh;object-fit:contain;display:block" controls playsinline autoplay loop></video>
+           </div>`
+        : `<div style="background:#000;display:flex;align-items:center;justify-content:center">
+            <img src="${p.image}" style="width:100%;max-height:80vh;object-fit:contain;display:block">
+           </div>`
+      : ''}
+    <div style="padding:16px">
+      <div style="font-size:14px;color:var(--t);line-height:1.6;margin-bottom:12px">${p.text}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${(p.tags||[]).map(t=>`<span style="font-size:10px;color:var(--o2);font-family:var(--ff);font-weight:600">${t}</span>`).join('')}</div>
+      <div style="display:flex;gap:16px;padding:12px 0;border-top:1px solid var(--b);border-bottom:1px solid var(--b);margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:5px;font-family:var(--ff);font-weight:600;font-size:12px;color:${liked?'var(--o)':'var(--t2)'}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="${liked?'currentColor':'none'}" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          ${p.likes?.length||0}
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-family:var(--ff);font-weight:600;font-size:12px;color:var(--t2)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          ${p.comments?.length||0}
+        </div>
+        <div style="margin-left:auto;background:var(--og);border:1px solid var(--b2);border-radius:20px;padding:3px 10px;font-family:var(--ff);font-weight:700;font-size:10px;color:var(--o)">+${p.xp} XP</div>
+      </div>
+      <button class="ai-deep-btn" onclick="document.getElementById('post-full-ov').remove();openAIDeepDive('${p.id}')">🤖 AI Deep Dive — ${p.skill}</button>
+    </div>`;
+  document.getElementById('root').appendChild(ov);
+}
+function showFollowers(){
+  const u=me();
+  const flrs=(u.followers||[]).map(uid=>userById(uid)).filter(Boolean);
+  openSheetEl();
+  document.getElementById('sheet-content').innerHTML=`
+    <div class="sheet-title">Friends & Followers</div>
+    ${flrs.length?flrs.map(f=>`
+      <div class="sacc" onclick="closeSheet();openUserProfile('${f.id}')">
+        <div class="sacc-av">${f.avatar?`<img src="${f.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(f.emoji||'👤')}</div>
+        <div><div class="sacc-nm">${f.name}</div><div class="sacc-em">@${f.username}</div></div>
+      </div>`).join(''):`<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;font-family:var(--ff)">No followers yet. Share your skills! 🚀</div>`}
+    <button class="sheet-cancel" onclick="closeSheet()">Close</button>`;
+}
+
+/* ════════════════════════════════════════
+   EDIT PROFILE
+════════════════════════════════════════ */
+const ALL_SKILLS=['Gaming','Coding','Design','Music','AI/ML','Fitness','Speaking','Business','Art','Photography','Writing','Cooking'];
+function openEditProfile(){
+  const u=me(); if(!u) return;
+  document.getElementById('ep-name').value=u.name||'';
+  document.getElementById('ep-user').value=u.username||'';
+  document.getElementById('ep-bio').value=u.bio||'';
+  document.getElementById('ep-loc').value=u.location||'';
+  document.getElementById('ep-web').value=u.website||'';
+  if(u.avatar){
+    document.getElementById('edit-av-preview').src=u.avatar;
+    document.getElementById('edit-av-preview').style.display='block';
+    document.getElementById('edit-av-em').style.display='none';
+  } else {
+    document.getElementById('edit-av-em').textContent=u.emoji||'⚡';
+    document.getElementById('edit-av-em').style.display='block';
+    document.getElementById('edit-av-preview').style.display='none';
+  }
+  if(u.banner){
+    document.getElementById('edit-banner-preview').src=u.banner;
+    document.getElementById('edit-banner-preview').style.display='block';
+    document.getElementById('edit-banner-lbl').style.display='none';
+  }
+  document.getElementById('ep-skills').innerHTML=ALL_SKILLS.map(s=>`
+    <div class="skill-tog ${(u.skills||[]).includes(s)?'sel':''}" onclick="toggleSkill(this,'${s}')">${skillEmoji(s)} ${s}</div>`).join('');
+}
+function toggleSkill(el,s){
+  el.classList.toggle('sel');
+}
+let _avatarFile=null;
+function previewAvatar(inp){
+  if(!inp.files[0]) return;
+  _avatarFile=inp.files[0];
+  const r=new FileReader();
+  r.onload=e=>{
+    document.getElementById('edit-av-preview').src=e.target.result;
+    document.getElementById('edit-av-preview').style.display='block';
+    document.getElementById('edit-av-em').style.display='none';
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+let _bannerFile=null;
+function previewBanner(inp){
+  if(!inp.files[0]) return;
+  _bannerFile=inp.files[0];
+  const r=new FileReader();
+  r.onload=e=>{
+    document.getElementById('edit-banner-preview').src=e.target.result;
+    document.getElementById('edit-banner-preview').style.display='block';
+    document.getElementById('edit-banner-lbl').style.display='none';
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+async function saveProfile(){
+  const u=me(); if(!u) return;
+  const newName=document.getElementById('ep-name').value.trim();
+  const newUser=document.getElementById('ep-user').value.trim().replace('@','');
+  if(!newName){ toast('⚠️ Name cannot be empty'); return; }
+  if(!newUser){ toast('⚠️ Username cannot be empty'); return; }
+  // check username unique
+  if(DB.users.find(x=>x.id!==u.id && x.username.toLowerCase()===newUser.toLowerCase())){
+    toast('⚠️ Username already taken'); return;
+  }
+  u.name=newName;
+  u.username=newUser;
+  u.bio=document.getElementById('ep-bio').value.trim();
+  u.location=document.getElementById('ep-loc').value.trim();
+  u.website=document.getElementById('ep-web').value.trim();
+  // skills
+  u.skills=Array.from(document.querySelectorAll('#ep-skills .skill-tog.sel')).map(el=>el.textContent.trim().replace(/^[^\s]+\s/,''));
+  // avatar — Cloudinary mein upload
+  if(_avatarFile){
+    const url=await uploadToCloudinary(_avatarFile);
+    if(url) u.avatar=url;
+    _avatarFile=null;
+  }
+  // banner — Cloudinary mein upload
+  if(_bannerFile){
+    const url=await uploadToCloudinary(_bannerFile);
+    if(url) u.banner=url;
+    _bannerFile=null;
+  }
+  try{ await window._updateDoc(window._doc(window._fbDb,'users',u.id), {
+    name:u.name,username:u.username,bio:u.bio,location:u.location,
+    website:u.website,skills:u.skills,avatar:u.avatar,banner:u.banner
+  }); }catch(e){}
+  renderProfile(); addXP(10);
+  toast('✅ Profile saved!');
+  setTimeout(()=>go('profile'),500);
+}
+
+/* ════════════════════════════════════════
+   FRIEND / CONNECT SYSTEM
+════════════════════════════════════════ */
+function friendStatus(uid){
+  const u=me(); if(!u) return '';
+  const myId=u.id;
+  if((DB.friends[myId]||[]).includes(uid)) return 'friends';
+  if((DB.requests[uid]||[]).includes(myId)) return 'sent';
+  return '';
+}
+function stLabel(st){
+  if(st==='friends') return 'Friends ✓';
+  if(st==='sent') return 'Requested';
+  return 'Connect ＋';
+}
+async function toggleConnect(uid,btn){
+  const myId=me()?.id; if(!myId||myId===uid) return;
+  const st=friendStatus(uid);
+  if(st==='friends'){
+    // unfriend
+    DB.friends[myId]=(DB.friends[myId]||[]).filter(x=>x!==uid);
+    DB.friends[uid]=(DB.friends[uid]||[]).filter(x=>x!==myId);
+    const other=userById(uid);
+    if(other){ other.followers=(other.followers||[]).filter(x=>x!==myId); }
+    const u=me(); u.following=(u.following||[]).filter(x=>x!==uid);
+    btn.className='flw'; btn.textContent='Connect ＋';
+    toast('👋 Unfriended');
+  } else if(st==='sent'){
+    // cancel request
+    DB.requests[uid]=(DB.requests[uid]||[]).filter(x=>x!==myId);
+    btn.className='flw'; btn.textContent='Connect ＋';
+    toast('❌ Request cancelled');
+  } else {
+    // send request
+    if(!DB.requests[uid]) DB.requests[uid]=[];
+    if(!DB.requests[uid].includes(myId)){ DB.requests[uid].push(myId); }
+    addNotif(uid,'friend_request',`👤 <strong>${me().name}</strong> sent you a friend request`,myId);
+    // Save request to target user's Firestore doc
+    try{
+      if(window._getDoc && window._doc && window._fbDb){
+        const tSnap=await window._getDoc(window._doc(window._fbDb,'users',uid));
+        const existingReqs=tSnap.exists()?(tSnap.data().requests||[]):[];
+        if(!existingReqs.includes(myId)){
+          existingReqs.push(myId);
+          await window._updateDoc(window._doc(window._fbDb,'users',uid),{requests:existingReqs});
+        } else {
+          toast('⚠️ Request already sent!');
+        }
+      }
+    }catch(e){ console.error('Request error:',e); }
+    btn.className='flw sent'; btn.textContent='Requested';
+    toast('📨 Friend request sent!');
+  }
+  try{
+    const myId=me().id;
+    await window._updateDoc(window._doc(window._fbDb,'users',myId),{
+      following:me().following||[], requests_sent:DB.requests[myId]||[]
+    });
+  }catch(e){}
+  renderReqBanner(); renderNotifs(); updateNotifDot();
+}
+async function acceptRequest(fromUid){
+  // First load the from user if not in DB
+  if(!userById(fromUid) && window._getDoc && window._doc && window._fbDb){
+    try{
+      const snap=await window._getDoc(window._doc(window._fbDb,'users',fromUid));
+      if(snap.exists()) DB.users.push({...snap.data(),id:fromUid});
+    }catch(e){}
+  }
+  const myId=me()?.id; if(!myId) return;
+  // accept
+  if(!DB.friends[myId]) DB.friends[myId]=[];
+  if(!DB.friends[fromUid]) DB.friends[fromUid]=[];
+  if(!DB.friends[myId].includes(fromUid)) DB.friends[myId].push(fromUid);
+  if(!DB.friends[fromUid].includes(myId)) DB.friends[fromUid].push(myId);
+  DB.requests[myId]=(DB.requests[myId]||[]).filter(x=>x!==fromUid);
+  const u=me(); if(!u.followers) u.followers=[];
+  if(!u.followers.includes(fromUid)) u.followers.push(fromUid);
+  const other=userById(fromUid); if(other){ if(!other.following) other.following=[]; if(!other.following.includes(myId)) other.following.push(myId); }
+  addNotif(fromUid,'accepted',`✅ <strong>${me().name}</strong> accepted your friend request!`);
+  addXP(20);
+  try{
+    const myId=me().id;
+    await window._updateDoc(window._doc(window._fbDb,'users',myId),{friends:DB.friends[myId]||[],followers:me().followers||[],requests:DB.requests[myId]||[]});
+    await window._updateDoc(window._doc(window._fbDb,'users',fromUid),{friends:DB.friends[fromUid]||[],following:(userById(fromUid)?.following)||[]});
+  }catch(e){}
+  renderNotifs(); renderUsers(); renderTrending(); renderReqBanner(); renderGreet();
+  toast(`✅ Now friends with ${userById(fromUid)?.name?.split(' ')[0]}! +20 XP`);
+}
+async function declineRequest(fromUid){
+  const myId=me()?.id; if(!myId) return;
+  DB.requests[myId]=(DB.requests[myId]||[]).filter(x=>x!==fromUid);
+  try{ await window._updateDoc(window._doc(window._fbDb,'users',me().id),{requests:DB.requests[me().id]||[]}); }catch(e){}
+  renderNotifs(); renderReqBanner();
+  toast('❌ Request declined');
+}
+function renderReqBanner(){
+  const el=document.getElementById('req-banner'); if(!el) return;
+  const myId=me()?.id; if(!myId){ el.innerHTML=''; return; }
+  const reqs=(DB.requests[myId]||[]);
+  if(!reqs.length){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="req-banner" onclick="go('notifications')">
+    <div class="req-count">${reqs.length}</div>
+    <div><div class="req-text">Friend Requests</div><div class="req-sub">${reqs.map(uid=>userById(uid)?.name?.split(' ')[0]).filter(Boolean).join(', ')} sent you requests</div></div>
+    <div style="margin-left:auto;font-size:18px">›</div>
+  </div>`;
+}
+
+/* ════════════════════════════════════════
+   OTHER USER PROFILE
+════════════════════════════════════════ */
+async function openUserProfile(uid){
+  const myId=me()?.id;
+  if(uid===myId){ go('profile'); return; }
+  viewingUser=uid;
+  prevScreen=document.querySelector('.scr.on')?.id?.replace('scr-','')||'home';
+  let u=userById(uid);
+  // Fetch from Firestore if not in local DB
+  if(!u && window._getDoc && window._doc && window._fbDb){
+    try{
+      const snap=await window._getDoc(window._doc(window._fbDb,'users',uid));
+      if(snap.exists()){ u={...snap.data(),id:uid}; DB.users.push(u); }
+    }catch(e){}
+  }
+  if(!u) return;
+  const id=x=>document.getElementById(x);
+  id('uv-title').textContent=u.name;
+  id('uv-name').textContent=u.name;
+  id('uv-handle').textContent=`@${u.username}${u.location?' · '+u.location:''}`;
+  id('uv-bio').textContent=u.bio||'';
+  id('uv-posts').textContent=DB.posts.filter(p=>p.uid===uid).length;
+  id('uv-followers').textContent=fmtNum(u.followers?.length||0);
+  id('uv-following').textContent=fmtNum(u.following?.length||0);
+  if(u.avatar){ id('uv-pic').innerHTML=`<img src="${u.avatar}">`; } else id('uv-pic').textContent=u.emoji||'👤';
+  if(u.banner) id('uv-banner').style.background=`url(${u.banner}) center/cover`;
+  id('uv-skills').innerHTML=(u.skills||[]).map(s=>`
+    <div class="sch"><span>${skillEmoji(s)}</span><span class="sch-n">${s}</span><span class="sch-lv">${skillLevel(u,s)}</span></div>`).join('');
+  const st=friendStatus(uid);
+  const fbtn=id('uv-follow-btn');
+  fbtn.textContent=stLabel(st); fbtn.className='uv-follow'+( st?' '+st:'');
+  // Load fresh posts for this user from Firestore
+  let uvPosts=DB.posts.filter(p=>p.uid===uid);
+  if(window._getDocs && window._collection && window._fbDb){
+    try{
+      const ps=await window._getDocs(window._collection(window._fbDb,'posts'));
+      const allPosts=[];
+      ps.forEach(d=>allPosts.push({...d.data(),id:d.id}));
+      // Merge into DB
+      allPosts.forEach(p=>{ const ex=DB.posts.find(x=>x.id===p.id); if(!ex) DB.posts.push(p); else Object.assign(ex,p); });
+      uvPosts=DB.posts.filter(p=>p.uid===uid);
+    }catch(e){}
+  }
+  id('uv-posts-grid').innerHTML=uvPosts.length
+    ? uvPosts.map(p=>`<div class="pgitem" onclick="openPostFull('${p.id}')">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover">`:(p.emoji||u.emoji||'⚡')}</div>`).join('')
+    : `<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--t3);font-size:12px;font-family:var(--ff)">No posts yet</div>`;
+  id('uv-posts').textContent=uvPosts.length;
+  go('userprofile');
+}
+async function uvToggleFollow(){
+  const uid=viewingUser; if(!uid) return;
+  const btn=document.getElementById('uv-follow-btn');
+  await toggleConnect(uid, btn);
+  const st=friendStatus(uid);
+  btn.textContent=stLabel(st);
+  btn.className='uv-follow'+(st?' '+st:'');
+}
+function uvMessage(){
+  const u=userById(viewingUser); if(!u) return;
+  openChatWith(viewingUser);
+}
+
+/* ════════════════════════════════════════
+   FIND / USERS
+════════════════════════════════════════ */
+async function renderUsers(){
+  const q=(document.getElementById('s-inp')||{value:''}).value.toLowerCase();
+  const myId=me()?.id;
+  const ul=document.getElementById('user-list');
+  // Always reload users from Firestore for fresh data
+  if(window._getDocs && window._collection && window._fbDb){
+    try{
+      const snap=await window._getDocs(window._collection(window._fbDb,'users'));
+      snap.forEach(d=>{
+        const ud={...d.data(),id:d.id};
+        const ex=DB.users.find(u=>u.id===d.id);
+        if(!ex) DB.users.push(ud); else Object.assign(ex,ud);
+      });
+    }catch(e){}
+  }
+  let users=DB.users.filter(u=>u.id!==myId);
+  if(q) users=users.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)||(u.skills||[]).some(s=>s.toLowerCase().includes(q)));
+  if(currentFilter!=='All') users=users.filter(u=>(u.skills||[]).includes(currentFilter));
+  if(ul) ul.innerHTML=users.length
+    ? users.map(u=>{
+        const st=friendStatus(u.id);
+        return `<div class="urow" onclick="openUserProfile('${u.id}')">
+          <div class="urav">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤')}</div>
+          <div style="flex:1"><div class="urname">${u.name} <span style="font-size:10px;color:var(--t3)">@${u.username}</span></div>
+          <div class="urskill">${(u.skills||[]).join(' · ')||'No skills yet'}</div>
+          <div class="urxp">⚡ Lv ${u.level} · ${fmtNum(u.xp)} XP</div></div>
+          <button class="flw ${st}" onclick="event.stopPropagation();toggleConnect('${u.id}',this)">${stLabel(st)}</button>
+        </div>`;}).join('')
+    : `<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">${q?'No users found for "'+q+'"':'No other users yet'}</div>`;
+}
+function setF(el,val){
+  document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); currentFilter=val;
+  const inp=document.getElementById('s-inp'); if(inp&&val!=='All') inp.value=''; else if(inp) inp.value='';
+  renderUsers();
+}
+
+/* ════════════════════════════════════════
+   COMMUNITIES
+════════════════════════════════════════ */
+function renderCommunities(){
+  const myId=me()?.id;
+  document.getElementById('comm-grid').innerHTML=DB.communities.map((c,i)=>{
+    const joined=(c.members_list||[]).includes(myId);
+    return `<div class="ccard" onclick="openCommDetail('${c.id||i}')">
+      <span class="ce">${c.emoji}</span><div class="cname">${c.name}</div><div class="cdesc">${c.desc}</div>
+      <div class="cmem">👥 ${fmtNum(c.members||1)} members</div>
+      <div class="cjoin ${joined?'j':''}" onclick="event.stopPropagation();joinComm('${c.id||i}',this)">${joined?'Joined':'Join'}</div>
     </div>`;
   }).join('');
 }
-
-// ═══════════════════════════════════════
-//  FIND / USERS
-// ═══════════════════════════════════════
-window.renderUsers=function(){
-  const q=($('s-inp')||{value:''}).value.toLowerCase();
-  let users=DB.users.filter(u=>u.id!==DB.currentUser);
-  if(q) users=users.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q)||(u.skills||[]).some(s=>s.toLowerCase().includes(q)));
-  if(currentFilter!=='All') users=users.filter(u=>(u.skills||[]).includes(currentFilter));
-  $('user-list').innerHTML=users.length?users.map(u=>{
-    const isFollowing=(me()?.following||[]).includes(u.id);
-    return `<div class="urow" onclick="openUserProfile('${u.id}')">
-      <div class="urav">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤')}</div>
-      <div style="flex:1"><div class="urname">${u.name} <span style="font-size:10px;color:var(--t3)">@${u.username}</span></div>
-      <div class="urskill">${(u.skills||[]).join(' · ')||'No skills yet'}</div>
-      <div class="urxp">⚡ Lv ${u.level||1} · ${fmtNum(u.xp||0)} XP</div></div>
-      <button class="flw ${isFollowing?'friends':''}" onclick="event.stopPropagation();toggleFollow('${u.id}',this)">${isFollowing?'Following':'Follow +'}</button>
+function openCommDetail(commId){
+  const c=DB.communities.find(x=>x.id==commId)||DB.communities[commId];
+  if(!c){ toast('Community not found'); return; }
+  const myId=me()?.id;
+  const joined=(c.members_list||[]).includes(myId);
+  const members=DB.users.filter(u=>(c.members_list||[]).includes(u.id));
+  openSheetEl();
+  document.getElementById('sheet-content').innerHTML=`
+    <div style="text-align:center;padding:10px 0 16px">
+      <div style="font-size:40px;margin-bottom:8px">${c.emoji}</div>
+      <div style="font-size:18px;font-weight:700;color:var(--t)">${c.name}</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:4px">${c.desc}</div>
+      <div style="font-size:11px;color:var(--o);margin-top:8px;font-weight:600">👥 ${fmtNum(c.members||1)} members</div>
+    </div>
+    <button class="abtn" style="width:100%;margin:0 0 10px;background:var(--o);color:#fff;font-size:15px" onclick="closeSheet();openCommChat('${c.id}','${c.name}','${c.emoji}')">💬 Open Community Chat</button>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="abtn" style="flex:1;margin:0;background:${joined?'var(--s2)':'var(--o)'};color:${joined?'var(--t)':'#fff'}" onclick="joinComm('${c.id}',this);renderCommunities()">${joined?'✓ Joined':'Join Community'}</button>
+      <button class="abtn" style="flex:1;margin:0;background:var(--s2);color:var(--t)" onclick="inviteToComm('${c.id}')">📨 Invite Friends</button>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.08em;margin-bottom:10px">MEMBERS (${members.length})</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${members.length>0?members.map(u=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--s2);border-radius:10px" onclick="closeSheet();viewProfile('${u.id}')">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;flex-shrink:0">
+            ${u.avatar?`<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover">`:(u.emoji||'👤')}
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--t)">${u.name}</div>
+            <div style="font-size:11px;color:var(--t3)">@${u.username} • ⚡${fmtNum(u.xp||0)} XP</div>
+          </div>
+        </div>`).join(''):'<div style="color:var(--t3);font-size:12px;text-align:center;padding:20px">No members yet — invite friends! 👆</div>'}
     </div>`;
-  }).join(''):`<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">No users found</div>`;
-};
-window.setF=function(el,val){ document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on')); el.classList.add('on'); currentFilter=val; renderUsers(); };
-
-window.toggleFollow=function(uid,btn){
-  const u=me(); if(!u||uid===DB.currentUser) return;
-  const isFollowing=(u.following||[]).includes(uid);
-  if(isFollowing){
-    u.following=(u.following||[]).filter(x=>x!==uid);
-    const other=getUser(uid); if(other) other.followers=(other.followers||[]).filter(x=>x!==DB.currentUser);
-    btn.className='flw'; btn.textContent='Follow +';
-    toast('Unfollowed');
-  } else {
-    u.following=[...(u.following||[]),uid];
-    const other=getUser(uid); if(other) other.followers=[...(other.followers||[]),DB.currentUser];
-    btn.className='flw friends'; btn.textContent='Following';
-    addXP(10); toast('✅ Followed! +10 XP');
-    addNotification(uid,'follow',`@${u.username} started following you ⚡`);
-  }
-  saveDB();
-};
-
-// ═══════════════════════════════════════
-//  OTHER USER PROFILE
-// ═══════════════════════════════════════
-window.openUserProfile=function(uid){
-  if(uid===DB.currentUser){ window.go('profile'); return; }
-  viewingUser=uid;
-  prevScreen=document.querySelector('.scr.on')?.id?.replace('scr-','')||'home';
-  const u=getUser(uid); if(!u) return;
-  $('uv-title').textContent=u.name;
-  $('uv-name').textContent=u.name;
-  $('uv-handle').textContent=`@${u.username}${u.location?' · '+u.location:''}`;
-  $('uv-bio').textContent=u.bio||'';
-  $('uv-followers').textContent=fmtNum((u.followers||[]).length);
-  $('uv-following').textContent=fmtNum((u.following||[]).length);
-  const userPosts=DB.posts.filter(p=>p.uid===uid);
-  $('uv-posts').textContent=userPosts.length;
-  $('uv-pic').innerHTML=u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤');
-  $('uv-skills').innerHTML=(u.skills||[]).map(s=>`<div class="sch"><span>${skillEmoji(s)}</span><span class="sch-n">${s}</span></div>`).join('');
-  const isFollowing=(me()?.following||[]).includes(uid);
-  $('uv-follow-btn').textContent=isFollowing?'Following':'Follow +';
-  $('uv-follow-btn').className='uv-follow'+(isFollowing?' friends':'');
-  if(u.banner) $('uv-banner').style.background=`url(${u.banner}) center/cover`;
-  $('uv-posts-grid').innerHTML=userPosts.length
-    ?userPosts.map(p=>`<div class="pgitem">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover">`:(u.emoji||'⚡')}</div>`).join('')
-    :`<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--t3);font-size:12px;font-family:var(--ff)">No posts yet</div>`;
-  showScreen('userprofile');
-};
-window.uvToggleFollow=function(){ const btn=$('uv-follow-btn'); if(viewingUser) toggleFollow(viewingUser,btn); };
-window.uvMessage=function(){ if(viewingUser) openChatWith(viewingUser); };
-
-// ═══════════════════════════════════════
-//  PROFILE
-// ═══════════════════════════════════════
-function renderProfile(){
-  const u=me(); if(!u) return;
-  const posts=DB.posts.filter(p=>p.uid===DB.currentUser);
-  const pct=Math.min(100,Math.round(((u.xp||0)%1000)/10));
-  $('p-pic').innerHTML=u.avatar?`<img src="${u.avatar}">`:(u.emoji||'⚡');
-  if(u.banner) $('p-banner').style.background=`url(${u.banner}) center/cover`;
-  $('p-name').textContent=u.name||'';
-  $('p-handle').textContent=`@${u.username||''}${u.location?' · '+u.location:''}`;
-  $('p-bio').textContent=u.bio||'';
-  $('p-posts').textContent=posts.length;
-  $('p-followers').textContent=fmtNum((u.followers||[]).length);
-  $('p-following').textContent=fmtNum((u.following||[]).length);
-  $('p-level').textContent=`⚡ Level ${u.level||1} — ${levelTitle(u.level||1)}`;
-  $('p-xp-txt').textContent=`${(u.xp||0)%1000} / 1000 XP`;
-  $('p-xp-fill').style.width=pct+'%';
-  $('p-skill-chips').innerHTML=(u.skills||[]).map(s=>`<div class="sch"><span>${skillEmoji(s)}</span><span class="sch-n">${s}</span></div>`).join('');
-  $('my-posts-grid').innerHTML=posts.length
-    ?posts.map(p=>`<div class="pgitem">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover">`:(u.emoji||'⚡')}</div>`).join('')
-    :`<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--t3);font-size:12px;font-family:var(--ff)">No posts yet. Tap ⚡ to create!</div>`;
 }
-window.showFollowers=function(){ toast(`👥 ${fmtNum((me()?.followers||[]).length)} followers`); };
+function inviteToComm(commId){
+  const c=DB.communities.find(x=>x.id==commId);
+  if(!c) return;
+  const link=window.location.href;
+  if(navigator.share){ navigator.share({title:`Join ${c.name} on SkillSpark!`,text:`Hey! Join my community "${c.name}" on SkillSpark 🚀`,url:link}); }
+  else { navigator.clipboard?.writeText(link); toast('🔗 Link copied! Share with friends'); }
+}
 
-// ═══════════════════════════════════════
-//  EDIT PROFILE
-// ═══════════════════════════════════════
-const ALL_SKILLS=['Gaming','Coding','Design','Music','AI/ML','Fitness','Speaking','Business','Art','Photography','Writing','Cooking'];
-window.openEditProfile=function(){
+/* ── COMMUNITY CHAT ── */
+let currentCommId=null;
+function openCommChat(commId,name,emoji){
+  currentCommId=commId;
+  document.getElementById('comm-chat-title').textContent=emoji+' '+name;
+  document.getElementById('comm-chat-msgs').innerHTML='';
+  go('comm-chat');
+  loadCommMsgs(commId);
+}
+async function loadCommMsgs(commId){
+  try{
+    const {getDocs,collection,query,orderBy,limit,onSnapshot}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const fbDb=window._fbDb; if(!fbDb) return;
+    const q=query(collection(fbDb,'comm_msgs'),orderBy('ts','asc'),limit(100));
+    // filter by commId client-side
+    onSnapshot(collection(fbDb,`comm_chats/${commId}/messages`),snap=>{
+      const msgs=[];
+      snap.forEach(d=>msgs.push({...d.data(),id:d.id}));
+      msgs.sort((a,b)=>(a.ts||0)-(b.ts||0));
+      renderCommMsgs(msgs);
+    });
+  }catch(e){ console.log(e); }
+}
+function renderCommMsgs(msgs){
+  const myId=me()?.id;
+  const box=document.getElementById('comm-chat-msgs');
+  box.innerHTML=msgs.map(m=>{
+    const mine=m.uid===myId;
+    return `<div style="display:flex;gap:8px;margin-bottom:10px;flex-direction:${mine?'row-reverse':'row'};align-items:flex-end">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">
+        ${m.avatar?`<img src="${m.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:(m.emoji||'👤')}
+      </div>
+      <div style="max-width:75%">
+        ${!mine?`<div style="font-size:10px;color:var(--t3);margin-bottom:2px">${m.name}</div>`:''}
+        <div style="background:${mine?'var(--o)':'var(--s2)'};color:${mine?'#fff':'var(--t)'};padding:8px 12px;border-radius:${mine?'14px 14px 4px 14px':'14px 14px 14px 4px'};font-size:13px;line-height:1.4">${m.text}</div>
+      </div>
+    </div>`;
+  }).join('');
+  box.scrollTop=box.scrollHeight;
+}
+async function sendCommMsg(){
+  const inp=document.getElementById('comm-msg-inp');
+  const text=inp.value.trim(); if(!text||!currentCommId) return;
   const u=me(); if(!u) return;
-  $('ep-name').value=u.name||''; $('ep-user').value=u.username||''; $('ep-bio').value=u.bio||'';
-  $('ep-loc').value=u.location||''; $('ep-web').value=u.website||'';
-  if(u.avatar){ $('edit-av-preview').src=u.avatar; $('edit-av-preview').style.display='block'; $('edit-av-em').style.display='none'; }
-  else{ $('edit-av-em').textContent=u.emoji||'⚡'; $('edit-av-em').style.display='block'; $('edit-av-preview').style.display='none'; }
-  $('ep-skills').innerHTML=ALL_SKILLS.map(s=>`<div class="skill-tog ${(u.skills||[]).includes(s)?'sel':''}" onclick="this.classList.toggle('sel')">${skillEmoji(s)} ${s}</div>`).join('');
-};
-window.previewAvatar=function(inp){ if(!inp.files[0]) return; const r=new FileReader(); r.onload=e=>{ $('edit-av-preview').src=e.target.result; $('edit-av-preview').style.display='block'; $('edit-av-em').style.display='none'; }; r.readAsDataURL(inp.files[0]); };
-window.previewBanner=function(inp){ if(!inp.files[0]) return; const r=new FileReader(); r.onload=e=>{ $('edit-banner-preview').src=e.target.result; $('edit-banner-preview').style.display='block'; $('edit-banner-lbl').style.display='none'; }; r.readAsDataURL(inp.files[0]); };
-window.saveProfile=function(){
-  const u=me(); if(!u) return;
-  const name=$('ep-name').value.trim();
-  const username=$('ep-user').value.trim().toLowerCase().replace('@','');
-  const bio=$('ep-bio').value.trim();
-  const location=$('ep-loc').value.trim();
-  const website=$('ep-web').value.trim();
-  const skills=[...$('ep-skills').querySelectorAll('.sel')].map(el=>el.textContent.replace(/[^\w\/\s]/g,'').trim()).filter(Boolean);
-  if(!name){ toast('⚠️ Name required'); return; }
-  if(username!==u.username && DB.users.find(x=>x.username===username)){ toast('⚠️ Username taken'); return; }
-  const avatar=$('edit-av-preview').src.startsWith('data')?$('edit-av-preview').src:(u.avatar||'');
-  const banner=$('edit-banner-preview')?.src?.startsWith('data')?$('edit-banner-preview').src:(u.banner||'');
-  Object.assign(u,{name,username,bio,location,website,skills,avatar,banner});
-  saveDB(); toast('✅ Profile saved!'); window.go('profile');
-};
+  inp.value='';
+  try{
+    const {addDoc,collection,serverTimestamp}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const fbDb=window._fbDb; if(!fbDb) return;
+    await addDoc(collection(fbDb,`comm_chats/${currentCommId}/messages`),{
+      text,uid:u.id,name:u.name,emoji:u.emoji||'👤',avatar:u.avatar||'',ts:Date.now()
+    });
+  }catch(e){ toast('Error: '+e.message); }
+}
 
-// ═══════════════════════════════════════
-//  XP
-// ═══════════════════════════════════════
-function addXP(amt){
+function joinComm(commId,btn){
+  const myId=me()?.id; if(!myId) return;
+  const c=DB.communities.find(x=>x.id==commId)||DB.communities[commId];
+  if(!c) return;
+  if(!c.members_list) c.members_list=[];
+  const idx=c.members_list.indexOf(myId);
+  if(idx>-1){ c.members_list.splice(idx,1); c.members=Math.max(0,(c.members||1)-1); if(btn){btn.className='cjoin';btn.textContent='Join';} toast(`👋 Left ${c.name}`); }
+  else { c.members_list.push(myId); c.members=(c.members||0)+1; if(btn){btn.className='cjoin j';btn.textContent='Joined';} addXP(15); toast(`🌐 Joined ${c.name}! +15 XP`); }
+  try{
+    if(window._updateDoc&&window._doc&&window._fbDb){
+      window._updateDoc(window._doc(window._fbDb,'communities',c.id),{members_list:c.members_list,members:c.members});
+    }
+  }catch(e){}
+  saveDB();
+}
+function createComm(){
+  openSheetEl();
+  document.getElementById('sheet-content').innerHTML=`
+    <div class="sheet-title">Create Community</div>
+    <div class="fg" style="margin-bottom:12px"><label class="fl">COMMUNITY NAME</label><input class="fi" id="nc-name" placeholder="e.g. React Builders"></div>
+    <div class="fg" style="margin-bottom:12px"><label class="fl">DESCRIPTION</label><input class="fi" id="nc-desc" placeholder="What's this community about?"></div>
+    <div class="fg" style="margin-bottom:16px"><label class="fl">EMOJI ICON</label><input class="fi" id="nc-emoji" placeholder="🚀" maxlength="2" style="font-size:24px;text-align:center"></div>
+    <button class="abtn" style="margin-top:0" onclick="submitComm()">Create Community ✓</button>
+    <button class="sheet-cancel" onclick="closeSheet()">Cancel</button>`;
+}
+
+async function submitComm(){
+  const name=document.getElementById("nc-name")?.value.trim();
+  const desc=document.getElementById("nc-desc")?.value.trim();
+  const emoji=document.getElementById("nc-emoji")?.value.trim()||"🌐";
+  if(!name){ toast("⚠️ Give your community a name!"); return; }
+  const myId=me()?.id;
+  const comm={name,desc:desc||"",emoji,members:1,members_list:[myId],createdBy:myId,createdAt:Date.now()};
+  try{
+    const {addDoc, collection} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const fbDb = window._fbDb;
+    if(fbDb){
+      const ref = await addDoc(collection(fbDb,"communities"), comm);
+      comm.id = ref.id;
+      toast("🌐 "+name+" community created! +50 XP");
+    }
+  }catch(e){ console.log('submitComm err',e); toast("❌ Error: "+e.message); return; }
+  DB.communities.push(comm);
+  renderCommunities(); closeSheet(); addXP(50);
+}
+async function loadCommunities(){
+  try{
+    const {getDocs, collection} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const fbDb = window._fbDb;
+    if(!fbDb){ setTimeout(loadCommunities, 1000); return; }
+    const snap = await getDocs(collection(fbDb,"communities"));
+    const fsComms=[];
+    snap.forEach(d=>fsComms.push({...d.data(),id:d.id}));
+    if(fsComms.length>=0){ DB.communities=fsComms; renderCommunities(); }
+  }catch(e){ console.log('loadComm err',e); }
+}
+
+
+
+
+
+
+
+
+
+/* ════════════════════════════════════════
+   CHALLENGES
+════════════════════════════════════════ */
+function renderChallenges(){
+  const myId=me()?.id;
+  document.getElementById('ch-list').innerHTML=DB.challenges.map((c,i)=>{
+    const joined=(c.joined||[]).includes(myId);
+    return `<div class="chcard">
+      <div class="chh"><div class="chicon">${c.emoji}</div>
+      <div><div class="chtype">${c.type}</div><div class="chtitle">${c.title}</div><div class="chdesc">${c.desc}</div></div>
+      </div>
+      <div class="chf"><span class="chxp">⚡ +${c.xp} XP</span><span class="chtimer">⏱ ${c.timer}</span>
+      <button class="chjoin ${joined?'j':''}" onclick="joinChallenge(${i},this)">${joined?'Participating ✓':'Join'}</button></div>
+    </div>`;
+  }).join('');
+  // Leaderboard from real users sorted by XP
+  const sorted=[...DB.users].sort((a,b)=>(b.xp||0)-(a.xp||0)).slice(0,8);
+  document.getElementById('lb-list').innerHTML=sorted.map((u,i)=>`
+    <div class="lbi">
+      <div class="lbrank" style="color:${i===0?'#FFD700':i===1?'#C0C0C0':i===2?'#CD7F32':'var(--t3)'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div>
+      <div class="lbav">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤')}</div>
+      <div class="lbname">${u.name}${u.id===myId?' (You)':''}</div>
+      <div class="lbxp">⚡ ${fmtNum(u.xp)} XP</div>
+    </div>`).join('');
+}
+function joinChallenge(i,btn){
+  const myId=me()?.id; if(!myId) return;
+  const c=DB.challenges[i];
+  if(!c.joined) c.joined=[];
+  const idx=c.joined.indexOf(myId);
+  if(idx>-1){ c.joined.splice(idx,1); btn.className='chjoin'; btn.textContent='Join'; toast('Challenge left'); }
+  else { c.joined.push(myId); btn.className='chjoin j'; btn.textContent='Participating ✓'; addXP(10); toast(`⚡ Challenge joined! Complete for +${c.xp} XP`); }
+  saveDB();
+}
+
+/* ════════════════════════════════════════
+   NOTIFICATIONS
+════════════════════════════════════════ */
+async function addNotif(toUid,type,text,fromUid){
+  if(!toUid||toUid===me()?.id) return;
+  const notif={id:'n'+Date.now(),to:toUid,type,from:fromUid||me()?.id,text,time:Date.now(),read:false};
+  DB.notifications.unshift(notif);
+  if(DB.notifications.length>100) DB.notifications=DB.notifications.slice(0,100);
+  try{
+    if(window._addDoc && window._collection && window._fbDb)
+      await window._addDoc(window._collection(window._fbDb,'notifications'), notif);
+  }catch(e){}
+}
+async function updateNotifDotFromDB(){
+  const myId=me()?.id; if(!myId) return;
+  if(window._getDocs && window._collection && window._fbDb){
+    try{
+      const snap=await window._getDocs(window._collection(window._fbDb,'notifications'));
+      let unread=0;
+      snap.forEach(d=>{ const n=d.data(); if(n.to===myId && !n.read) unread++; });
+      const reqs=(DB.requests[myId]||[]).length;
+      const dot=document.getElementById('notif-dot');
+      if(dot) dot.style.display=(unread+reqs)>0?'block':'none';
+    }catch(e){}
+  }
+}
+async function renderNotifs(){
+  const myId=me()?.id; if(!myId) return;
+  // Load notifications + requests from Firestore
+  if(window._getDocs && window._collection && window._fbDb){
+    try{
+      const snap=await window._getDocs(window._collection(window._fbDb,'notifications'));
+      snap.forEach(d=>{
+        const n={...d.data()};
+        if(n.to===myId && !DB.notifications.find(x=>x.id===n.id)) DB.notifications.unshift(n);
+      });
+      // Load friend requests from user doc
+      const uSnap=await window._getDoc(window._doc(window._fbDb,'users',myId));
+      if(uSnap.exists()){
+        const reqs=uSnap.data().requests||[];
+        DB.requests[myId]=reqs;
+      }
+    }catch(e){}
+  }
+  const mine=DB.notifications.filter(n=>n.to===myId).sort((a,b)=>b.time-a.time);
+  const reqs=(DB.requests[myId]||[]);
+  // Fetch any unknown users who sent requests
+  for(const fromUid of reqs){
+    if(!userById(fromUid) && window._getDoc && window._doc && window._fbDb){
+      try{
+        const s=await window._getDoc(window._doc(window._fbDb,'users',fromUid));
+        if(s.exists()) DB.users.push({...s.data(),id:fromUid});
+      }catch(e){}
+    }
+  }
+  let html='';
+  reqs.forEach(fromUid=>{
+    const from=userById(fromUid); if(!from) return;
+    html+=`<div class="nitem unread">
+      <div class="nic">${from.avatar?`<img src="${from.avatar}">`:(from.emoji||'👤')}</div>
+      <div><div class="ntext"><strong>${from.name}</strong> sent you a friend request</div>
+      <div class="ntime">Pending</div>
+      <div class="nact-btns">
+        <button class="nact acc" onclick="acceptRequest('${fromUid}')">Accept</button>
+        <button class="nact dec" onclick="declineRequest('${fromUid}')">Decline</button>
+      </div></div>
+    </div>`;
+  });
+  mine.forEach(n=>{
+    const from=userById(n.from);
+    html+=`<div class="nitem ${n.read?'':'unread'}">
+      <div class="nic">${from?.avatar?`<img src="${from.avatar}">`:(from?.emoji||'🔔')}</div>
+      <div><div class="ntext">${n.text}</div><div class="ntime">${timeAgo(n.time)}</div></div>
+    </div>`;
+  });
+  if(!html) html=`<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">No notifications yet.<br>Start connecting and posting! ⚡</div>`;
+  document.getElementById('notif-list').innerHTML=html;
+  updateNotifDot();
+}
+async function markNotifsRead(){
+  const myId=me()?.id; if(!myId) return;
+  DB.notifications.filter(n=>n.to===myId).forEach(n=>n.read=true);
+  // Update in Firestore too
+  try{
+    if(window._getDocs && window._collection && window._fbDb){
+      const snap=await window._getDocs(window._collection(window._fbDb,'notifications'));
+      const updates=[];
+      snap.forEach(d=>{ if(d.data().to===myId && !d.data().read) updates.push(window._updateDoc(window._doc(window._fbDb,'notifications',d.id),{read:true})); });
+      await Promise.all(updates);
+    }
+  }catch(e){}
+}
+function updateNotifDot(){
+  const myId=me()?.id; if(!myId) return;
+  const unread=DB.notifications.filter(n=>n.to===myId&&!n.read).length + (DB.requests[myId]?.length||0);
+  const dot=document.getElementById('notif-dot');
+  if(dot) dot.style.display=unread?'block':'none';
+}
+
+/* ════════════════════════════════════════
+   DMs / CHAT
+════════════════════════════════════════ */
+function renderDMs(){
+  const myId=me()?.id; if(!myId) return;
+  // Build conversation list from messages
+  const convos={};
+  Object.entries(DB.messages||{}).forEach(([key,msgs])=>{
+    const parts=key.split('_');
+    const other=parts.find(p=>p!==myId);
+    if(!other) return;
+    if(key.includes(myId)){
+      const last=msgs[msgs.length-1];
+      if(last) convos[other]={last,count:msgs.filter(m=>m.from!==myId&&!m.read).length};
+    }
+  });
+  // Also show friends with no messages
+  (DB.friends[myId]||[]).forEach(uid=>{ if(!convos[uid]) convos[uid]={last:null,count:0}; });
+  const html=Object.entries(convos).map(([uid,{last,count}])=>{
+    const u=userById(uid); if(!u) return '';
+    return `<div class="dmitem" onclick="openChatWith('${uid}')">
+      <div class="dmav">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤')}<div class="dmon"></div></div>
+      <div style="flex:1"><div class="dmname">${u.name}</div><div class="dmprev">${last?last.text:'Say hi! 👋'}</div></div>
+      <div style="text-align:right"><div class="dmtime">${last?timeAgo(last.time):''}</div>${count?`<div class="dmbadge">${count}</div>`:''}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('dm-list').innerHTML=html||`<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">No messages yet.<br>Connect with friends and start chatting! 💬</div>`;
+}
+function openChatWith(uid){
+  chatWith=uid;
+  const u=userById(uid); if(!u) return;
+  const el=id=>document.getElementById(id);
+  el('chat-name').textContent=u.name;
+  el('chat-av').innerHTML=u.avatar?`<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(u.emoji||'👤');
+  go('chat');
+  fetchChatMsgs();
+}
+function chatKey(a,b){ return [a,b].sort().join('_'); }
+function renderChatMsgs(){
+  const myId=me()?.id; if(!myId||!chatWith) return;
+  const key=chatKey(myId,chatWith);
+  const msgs=DB.messages[key]||[];
+  const el=document.getElementById('chat-msgs'); if(!el) return;
+  el.innerHTML=msgs.length
+    ? msgs.map(m=>`<div class="mb ${m.from===myId?'mout':'min'}">${m.text}<div class="mtime" style="text-align:${m.from===myId?'right':'left'}">${timeAgo(m.time)}</div></div>`).join('')
+    : `<div style="text-align:center;padding:30px;color:var(--t3);font-size:12px;font-family:var(--ff)">Start the conversation! 👋</div>`;
+  el.scrollTop=el.scrollHeight;
+  renderDMs();
+}
+let _chatUnsub=null;
+async function fetchChatMsgs(){
+  const myId=me()?.id; if(!myId||!chatWith) return;
+  const key=chatKey(myId,chatWith);
+  // Pehle se koi listener ho toh band karo
+  if(_chatUnsub){ _chatUnsub(); _chatUnsub=null; }
+  if(window._onSnapshot && window._collection && window._fbDb){
+    try{
+      // Real-time listener — naya message aate hi turant dikhega
+      _chatUnsub=window._onSnapshot(
+        window._collection(window._fbDb,'messages'),
+        (snap)=>{
+          const fresh=[];
+          snap.forEach(d=>{ const m=d.data(); if(m.key===key) fresh.push(m); });
+          fresh.sort((a,b)=>a.time-b.time);
+          DB.messages[key]=fresh;
+          renderChatMsgs();
+        }
+      );
+    }catch(e){ renderChatMsgs(); }
+  } else {
+    renderChatMsgs();
+  }
+}
+async function sendMsg(){
+  const inp=document.getElementById('chat-inp'); if(!inp) return;
+  const txt=inp.value.trim(); if(!txt) return;
+  const myId=me()?.id; if(!myId||!chatWith) return;
+  const key=chatKey(myId,chatWith);
+  if(!DB.messages[key]) DB.messages[key]=[];
+  const msg={from:myId,to:chatWith,text:txt,time:Date.now(),read:false,key};
+  DB.messages[key].push(msg);
+  inp.value='';
+  renderChatMsgs(); // turant local render — no reload needed
+  addNotif(chatWith,'message',`💬 <strong>${me().name}</strong>: ${txt.slice(0,40)}${txt.length>40?'...':''}`);
+  try{
+    if(window._addDoc && window._collection && window._fbDb)
+      await window._addDoc(window._collection(window._fbDb,'messages'), msg);
+  }catch(e){}
+}
+
+/* ════════════════════════════════════════
+   XP SYSTEM
+════════════════════════════════════════ */
+async function addXP(amt){
   const u=me(); if(!u) return;
   u.xp=(u.xp||0)+amt;
   const newLevel=Math.floor(u.xp/1000)+1;
-  if(newLevel>u.level){ u.level=newLevel; toast(`🎉 Level Up! Level ${newLevel} — ${levelTitle(newLevel)}!`); }
-  saveDB(); renderGreet();
+  if(newLevel>u.level){
+    u.level=newLevel;
+    toast(`🎉 Level Up! You're now Level ${newLevel} — ${levelTitle(newLevel)}!`);
+    addNotif(u.id,'levelup',`⚡ You reached <strong>Level ${newLevel} — ${levelTitle(newLevel)}</strong>!`);
+  }
+  try{ await window._updateDoc(window._doc(window._fbDb,'users',u.id),{xp:u.xp,level:u.level}); }catch(e){}
+  renderGreet();
+}
+function levelTitle(l){
+  const t=['Newcomer','Spark','Rising Star','Skilled','Expert','Elite','Master','Legend','Myth','Icon'];
+  return t[Math.min(l-1,t.length-1)];
 }
 
-// ═══════════════════════════════════════
-//  COMMUNITIES
-// ═══════════════════════════════════════
-function renderCommunities(){
-  $('comm-grid').innerHTML=DB.communities.map(c=>{
-    const joined=(c.membersList||[]).includes(DB.currentUser);
-    return `<div class="ccard">
-      <span class="ce">${c.emoji}</span><div class="cname">${c.name}</div><div class="cdesc">${c.desc}</div>
-      <div class="cmem">👥 ${fmtNum(c.members||0)} members</div>
-      <div class="cjoin ${joined?'j':''}" onclick="joinComm('${c.id}',this,'${c.name}')">${joined?'Joined':'Join'}</div>
-    </div>`;
-  }).join('');
+/* ════════════════════════════════════════
+   SHEET MODAL
+════════════════════════════════════════ */
+function openSheetEl(){
+  const el=document.getElementById('sheet');
+  el.style.display='flex'; requestAnimationFrame(()=>el.classList.add('open'));
 }
-window.joinComm=function(id,btn,name){
-  const c=DB.communities.find(x=>x.id===id); if(!c) return;
-  const list=c.membersList||[];
-  const joined=list.includes(DB.currentUser);
-  c.membersList=joined?list.filter(x=>x!==DB.currentUser):[...list,DB.currentUser];
-  c.members=(c.members||0)+(joined?-1:1);
-  saveDB(); btn.className='cjoin'+(joined?'':' j'); btn.textContent=joined?'Join':'Joined';
-  if(!joined){ addXP(15); toast(`🌐 Joined ${name}! +15 XP`); } else toast(`👋 Left ${name}`);
-};
-window.createComm=function(){
+function closeSheet(){
+  const el=document.getElementById('sheet');
+  el.classList.remove('open');
+  setTimeout(()=>el.style.display='none',300);
+}
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+/* ════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════ */
+function timeAgo(ts){
+  const d=(Date.now()-ts)/1000;
+  if(d<60) return 'just now';
+  if(d<3600) return Math.floor(d/60)+'m ago';
+  if(d<86400) return Math.floor(d/3600)+'h ago';
+  return Math.floor(d/86400)+'d ago';
+}
+function fmtNum(n){
+  if(n>=1000000) return (n/1000000).toFixed(1)+'M';
+  if(n>=1000) return (n/1000).toFixed(1)+'k';
+  return n;
+}
+function skillEmoji(s){
+  const m={Gaming:'🎮',Coding:'💻',Design:'🎨',Music:'🎵','AI/ML':'🤖',Fitness:'🏋️',Speaking:'🎤',Business:'📊',Art:'🖌️',Photography:'📷',Writing:'✍️',Cooking:'🍳'};
+  return m[s]||'⚡';
+}
+function skillLevel(u,s){
+  const xp=u.xp||0;
+  if(xp>10000) return 'PRO';
+  if(xp>5000) return 'ACE';
+  if(xp>2000) return 'INT';
+  return 'BEG';
+}
+
+/* ════════════════════════════════════════
+   AI DISCOVERY
+════════════════════════════════════════ */
+let aiHist=[],aiDiscovered=[],aiBusy=false,aiReady=false;
+
+function aiAddMsg(html,role){
+  const w=document.getElementById('ai-chat');
+  const d=document.createElement('div');
+  d.className='ai-msg '+role;
+  if(role==='ai') d.innerHTML='<div class="ai-lbl">⚡ SKILLSPARK AI</div>'+html;
+  else d.textContent=html;
+  w.appendChild(d);
+  d.scrollIntoView({behavior:'smooth',block:'end'});
+}
+function aiShowDots(){
+  const w=document.getElementById('ai-chat');
+  const d=document.createElement('div');
+  d.className='ai-msg ai';d.id='ai-ld';
+  d.innerHTML='<div class="ai-lbl">⚡ SKILLSPARK AI</div><div class="ai-dots"><span></span><span></span><span></span></div>';
+  w.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});
+}
+function aiHideDots(){const e=document.getElementById('ai-ld');if(e)e.remove();}
+
+function aiUseSug(el){
+  document.getElementById('ai-inp').value=el.textContent.trim();
+  document.getElementById('ai-sugs').style.display='none';
+  aiSend();
+}
+
+function aiShowSkills(skills){
+  const sec=document.getElementById('ai-skills');
+  sec.innerHTML='<div class="ai-rhdr">🔍 TUMHARI DISCOVERED SKILLS</div>'+
+    skills.map(s=>`<div class="ai-sc ${s.type==='hidden'?'hg':''}">
+      <div class="ai-stop">
+        <span style="font-size:19px">${s.emoji}</span>
+        <span style="font-family:var(--ff);font-weight:700;font-size:13px;color:var(--t);flex:1">${s.name}</span>
+        <span class="ai-sbdg ${s.type}">${s.type==='hidden'?'🔮 Hidden':s.type==='strong'?'💪 Strong':'🌱 Emerging'}</span>
+      </div>
+      <div class="ai-sdesc">${s.description}</div>
+      <div class="ai-sproof">💡 <span>Proof:</span> ${s.proof}</div>
+      <div class="ai-conf"><div class="ai-cbar"><div class="ai-cfill" style="width:0%" data-p="${s.confidence}"></div></div><span class="ai-cpct">${s.confidence}%</span></div>
+    </div>`).join('')+
+    '<button class="ai-add-btn" onclick="aiAddToProfile()">⚡ Profile Mein Add Karo</button>';
+  sec.scrollIntoView({behavior:'smooth'});
+  setTimeout(()=>document.querySelectorAll('.ai-cfill').forEach(e=>e.style.width=e.dataset.p+'%'),500);
+}
+
+function aiAddToProfile(){
+  const u=me();if(!u)return;
+  const names=aiDiscovered.map(s=>s.name);
+  u.skills=[...new Set([...(u.skills||[]),...names])];
+  saveDB();renderProfile();
+  toast('✅ Skills profile mein add ho gayi! ⚡');
+}
+
+async function aiSend(){
+  const inp=document.getElementById('ai-inp');
+  const txt=inp.value.trim();
+  if(!txt||aiBusy)return;
+  aiBusy=true;inp.value='';inp.style.height='auto';
+  document.getElementById('ai-send-btn').disabled=true;
+  document.getElementById('ai-sugs').style.display='none';
+  aiAddMsg(txt,'user');
+  aiHist.push({role:'user',content:txt});
+  aiShowDots();
+
+  const sys=`You are SkillSpark AI — an elite career intelligence system. Your job is to uncover hidden, marketable skills from casual conversation — like a world-class career coach meets Sherlock Holmes.
+
+LANGUAGE RULE: Match the user's language EXACTLY. Hindi/Hinglish → Hinglish. English → English. Never switch languages mid-conversation.
+
+YOUR PERSONALITY:
+- Sharp, warm, insightful — like a brilliant friend who really "gets" you
+- Use **bold** for key insights, keep replies tight and punchy
+- Celebrate skill discoveries with genuine excitement
+- Sound human, never robotic or generic
+
+DEEP QUESTIONING STRATEGY — Follow this flow strictly:
+1. START: Ask what they spend most time on (hobbies, work, side stuff)
+2. AFTER ANSWER → Ask ONE specific follow-up from this list based on their answer:
+   - "Kitne time se kar rahe ho yeh?" (how long?)
+   - "Log tumse is cheez mein help maangte hain?" (do people ask for help?)
+   - "Koi iska paisa mila hai kabhi?" (ever earned money?)
+   - "Sabse complex kaam kya kiya hai is field mein?" (hardest thing done?)
+   - "Khud seekha ya kisi ne sikhaya?" (self-taught?)
+   - "Isme kya hai jo doosre nahi kar paate?" (what makes you unique?)
+3. AFTER 2nd ANSWER → Dig deeper with another specific question
+4. AFTER 3-4 exchanges → Give skill analysis
+
+RULES:
+- Ask ONLY ONE question per message — never multiple
+- Each question must be SPECIFIC to what they said, not generic
+- If they mention coding → ask what they built, what language, solo or team
+- If they mention design → ask tools used, clients, portfolio
+- If they mention gaming → ask if they stream, create content, lead teams
+- NEVER ask "tell me more" — always ask something SPECIFIC
+- Keep each reply under 4 lines
+
+WHEN READY FOR ANALYSIS (after 4-5 exchanges), output exactly:
+[SKILLS_JSON]
+[{"name":"Skill Name","emoji":"🎯","type":"hidden","confidence":85,"description":"Clear 1-line description","proof":"Evidence from conversation","why_hidden":"Why they undervalue it"}]
+[/SKILLS_JSON]
+Then add a powerful 2-line motivating message.
+
+type: hidden/strong/emerging | confidence: 0-100`;
+
+  try{
+    const res=await fetch('https://skillspark-production.up.railway.app/groq',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer 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'},
+      body:JSON.stringify({model:'llama-3.1-8b-instant',max_tokens:900,messages:[{role:'system',content:sys},...aiHist]})
+    });
+    const data=await res.json();
+    const full=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'Error aaya, dobara try karo!';
+    aiHideDots();
+    const sm=full.match(/\[SKILLS_JSON\]([\s\S]*?)\[\/SKILLS_JSON\]/);
+    const display=full.replace(/\[SKILLS_JSON\][\s\S]*?\[\/SKILLS_JSON\]/,'').trim();
+    if(sm){
+      try{
+        const sk=JSON.parse(sm[1].trim());
+        aiDiscovered=sk;
+        if(display)aiAddMsg(display,'ai');
+        setTimeout(()=>aiShowSkills(sk),300);
+      }catch(e){aiAddMsg(display||full,'ai');}
+    }else{aiAddMsg(display,'ai');}
+    aiHist.push({role:'assistant',content:full});
+  }catch(e){
+    aiHideDots();
+    aiAddMsg('Network error: '+e.message+' — dobara try karo.','ai');
+  }
+  aiBusy=false;
+  document.getElementById('ai-send-btn').disabled=false;
+}
+
+/* ════════════════════════════════════════
+   AI DEEP DIVE
+════════════════════════════════════════ */
+async function openAIDeepDive(pid){
+  const p=DB.posts.find(x=>x.id===pid); if(!p) return;
+  const u=userById(p.uid);
   openSheetEl();
-  $('sheet-content').innerHTML=`
-    <div class="sheet-title">Create Community</div>
-    <div class="fg"><label class="fl">NAME</label><input class="fi" id="new-comm-name" placeholder="Community name"></div>
-    <div class="fg"><label class="fl">DESCRIPTION</label><input class="fi" id="new-comm-desc" placeholder="What's it about?"></div>
-    <div class="fg"><label class="fl">EMOJI</label><input class="fi" id="new-comm-emoji" placeholder="🌟" maxlength="2"></div>
-    <button class="abtn" style="margin-top:8px" onclick="submitComm()">Create ⚡</button>
+  const sc=document.getElementById('sheet-content');
+
+  // Loading state
+  sc.innerHTML=`
+    <div class="sheet-handle"></div>
+    <div style="font-family:var(--ff);font-weight:800;font-size:16px;color:var(--t);margin-bottom:2px">🤖 AI Deep Dive</div>
+    <div style="font-size:11px;color:var(--o);font-family:var(--ff);margin-bottom:14px">${p.skill} — by ${u?.name||'Unknown'}</div>
+    <div class="dd-loading">
+      <div style="font-size:32px">⚡</div>
+      <div class="ai-dots"><span></span><span></span><span></span></div>
+      <p>Analyzing ${p.skill} skill...</p>
+    </div>
     <button class="sheet-cancel" onclick="closeSheet()">Cancel</button>`;
-};
-window.submitComm=function(){
-  const name=$('new-comm-name').value.trim(), desc=$('new-comm-desc').value.trim(), emoji=$('new-comm-emoji').value.trim()||'🌟';
-  if(!name){ toast('⚠️ Name required'); return; }
-  DB.communities.push({id:'c_'+Date.now(),name,desc,emoji,members:1,membersList:[DB.currentUser],createdBy:DB.currentUser});
-  addXP(30); saveDB(); toast(`🌐 "${name}" created! +30 XP`); closeSheet(); renderCommunities();
-};
 
-// ═══════════════════════════════════════
-//  CHALLENGES
-// ═══════════════════════════════════════
-const CHALLENGES=[
-  {id:'ch1',icon:'🎮',type:'GAMING',title:'Win 10 Ranked Matches',desc:'Prove your gaming skills',xp:500,timer:'2d 14h left'},
-  {id:'ch2',icon:'💻',type:'CODING',title:'Ship a Project in 48hrs',desc:'Code & deploy something real',xp:1000,timer:'1d 6h left'},
-  {id:'ch3',icon:'🎨',type:'DESIGN',title:'UI Redesign Challenge',desc:'Redesign any popular app',xp:750,timer:'3d left'},
-  {id:'ch4',icon:'🤖',type:'AI/ML',title:'Train Your First Model',desc:'Build & share an AI model',xp:800,timer:'5d left'},
-];
-function renderChallenges(){
-  const u=me();
-  $('ch-list').innerHTML=CHALLENGES.map((c,i)=>{
-    const joined=(u?.joinedChallenges||[]).includes(c.id);
-    return `<div class="chcard"><div class="chh">
-      <div class="chicon">${c.icon}</div>
-      <div style="flex:1"><div class="chtype">${c.type}</div><div class="chtitle">${c.title}</div><div class="chdesc">${c.desc}</div></div>
-    </div><div class="chf">
-      <div class="chxp">+${c.xp} XP</div><div class="chtimer">${c.timer}</div>
-      <button class="chjoin ${joined?'j':''}" id="cj-${c.id}" onclick="joinChallenge('${c.id}',this)">${joined?'Participating ✓':'Join'}</button>
-    </div></div>`;
-  }).join('');
-  // Leaderboard
-  const top=[...DB.users].sort((a,b)=>(b.xp||0)-(a.xp||0)).slice(0,8);
-  $('lb-list').innerHTML=top.map((u,i)=>`<div class="lbi">
-    <div class="lbrank" style="color:${i===0?'#FFD700':i===1?'#C0C0C0':i===2?'#CD7F32':'var(--t3)'}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div>
-    <div class="lbav">${u.avatar?`<img src="${u.avatar}">`:(u.emoji||'👤')}</div>
-    <div class="lbname">${u.name}${u.id===DB.currentUser?' (You)':''}</div>
-    <div class="lbxp">⚡ ${fmtNum(u.xp||0)}</div>
-  </div>`).join('');
-}
-window.joinChallenge=function(id,btn){
-  const u=me(); if(!u) return;
-  if((u.joinedChallenges||[]).includes(id)){ toast('Already participating!'); return; }
-  u.joinedChallenges=[...(u.joinedChallenges||[]),id];
-  saveDB(); btn.className='chjoin j'; btn.textContent='Participating ✓';
-  addXP(10); toast('⚡ Challenge joined! +10 XP');
-};
+  const prompt=`Tu SkillSpark ka AI Career Expert hai. User ne yeh post share ki hai:
 
-// ═══════════════════════════════════════
-//  DMs
-// ═══════════════════════════════════════
-function renderDMs(){
-  const u=me(); if(!u) return;
-  const following=u.following||[];
-  if(!following.length){ $('dm-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">Follow people to message them! 💬</div>`; return; }
-  $('dm-list').innerHTML=following.map(uid=>{
-    const other=getUser(uid); if(!other) return '';
-    const key=[DB.currentUser,uid].sort().join('_');
-    const msgs=(DB.messages[key]||[]);
-    const last=msgs[msgs.length-1];
-    return `<div class="dmitem" onclick="openChatWith('${uid}')">
-      <div class="dmav">${other.avatar?`<img src="${other.avatar}">`:(other.emoji||'👤')}<div class="dmon"></div></div>
-      <div style="flex:1"><div class="dmname">${other.name}</div><div class="dmprev">${last?last.text:'Say hi! 👋'}</div></div>
-      <div class="dmtime">${last?timeAgo(last.time):''}</div>
-    </div>`;
-  }).join('');
-}
-window.openChatWith=function(uid){
-  chatWith=uid; const u=getUser(uid); if(!u) return;
-  $('chat-name').textContent=u.name;
-  $('chat-av').innerHTML=u.avatar?`<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:(u.emoji||'👤');
-  renderChatMsgs(); showScreen('chat');
-};
-function renderChatMsgs(){
-  const myId=DB.currentUser; if(!chatWith) return;
-  const key=[myId,chatWith].sort().join('_');
-  const msgs=DB.messages[key]||[];
-  const el=$('chat-msgs'); if(!el) return;
-  el.innerHTML=msgs.length
-    ?msgs.map(m=>`<div class="mb ${m.from===myId?'mout':'min'}">${m.text}<div class="mtime" style="text-align:${m.from===myId?'right':'left'}">${timeAgo(m.time)}</div></div>`).join('')
-    :`<div style="text-align:center;padding:30px;color:var(--t3);font-size:12px;font-family:var(--ff)">Start the conversation! 👋</div>`;
-  el.scrollTop=el.scrollHeight;
-}
-window.sendMsg=function(){
-  const inp=$('chat-inp'); if(!inp) return;
-  const txt=inp.value.trim(); if(!txt||!chatWith) return;
-  const key=[DB.currentUser,chatWith].sort().join('_');
-  if(!DB.messages[key]) DB.messages[key]=[];
-  DB.messages[key].push({from:DB.currentUser,text:txt,time:Date.now(),read:false});
-  saveDB(); inp.value=''; renderChatMsgs();
-};
+Skill: ${p.skill}
+Post: "${p.text}"
+Tags: ${(p.tags||[]).join(', ')||'none'}
 
-// ═══════════════════════════════════════
-//  NOTIFICATIONS
-// ═══════════════════════════════════════
-function addNotification(toUid, type, text){
-  DB.notifications.push({id:'n_'+Date.now(),to:toUid,type,text,time:Date.now(),read:false});
-  saveDB();
-}
-function renderNotifs(){
-  const myNotifs=(DB.notifications||[]).filter(n=>n.to===DB.currentUser).reverse();
-  $('notif-list').innerHTML=myNotifs.length
-    ?myNotifs.map(n=>`<div class="nitem ${n.read?'':'unread'}">
-      <div class="nic">🔔</div>
-      <div><div class="ntext">${n.text}</div><div class="ntime">${timeAgo(n.time)}</div></div>
-    </div>`).join('')
-    :`<div style="text-align:center;padding:40px;color:var(--t3);font-size:12px;font-family:var(--ff)">No notifications yet ⚡</div>`;
-  // mark all read
-  DB.notifications.forEach(n=>{ if(n.to===DB.currentUser) n.read=true; });
-  saveDB();
+Ab is skill ke baare mein DEEP analysis do in EXACT JSON format (koi extra text mat likho, sirf JSON):
+{
+  "what": "2-3 sentences mein skill kya hai aur kyun important hai",
+  "careers": ["Career 1", "Career 2", "Career 3", "Career 4", "Career 5"],
+  "learn": ["Step 1: ...", "Step 2: ...", "Step 3: ...", "Step 4: ..."],
+  "resources": ["Resource naam + link ya platform", "Resource 2", "Resource 3", "Resource 4"],
+  "earning_min": "Entry level monthly (INR)",
+  "earning_mid": "Mid level monthly (INR)",
+  "earning_max": "Senior/freelance monthly (INR)",
+  "pro_tip": "Ek important insider tip jo bahut log miss karte hain"
 }
 
-// ═══════════════════════════════════════
-//  SHEET
-// ═══════════════════════════════════════
-window.openSheetEl=function(){ const el=$('sheet'); el.style.display='flex'; requestAnimationFrame(()=>el.classList.add('open')); };
-window.closeSheet=function(){ const el=$('sheet'); el.classList.remove('open'); setTimeout(()=>el.style.display='none',300); };
+Indian market ke liye relevant rakho. JSON only, no markdown.`;
 
-// ═══════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════
+  try{
+    const res=await fetch('https://skillspark-production.up.railway.app/groq',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer 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'},
+      body:JSON.stringify({
+        model:'llama-3.1-8b-instant',
+        max_tokens:900,
+        temperature:0.7,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await res.json();
+    const raw=(data.choices&&data.choices[0]?.message?.content)||'';
+
+    let d;
+    try{
+      const clean=raw.replace(/```json|```/g,'').trim();
+      d=JSON.parse(clean);
+    }catch(e){
+      sc.innerHTML=`<div class="sheet-handle"></div>
+        <div style="font-family:var(--ff);font-weight:800;font-size:15px;color:var(--t);margin-bottom:14px">🤖 AI Deep Dive — ${p.skill}</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.7;background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:13px">${raw}</div>
+        <button class="sheet-cancel" onclick="closeSheet()" style="margin-top:12px">Close</button>`;
+      return;
+    }
+
+    sc.innerHTML=`
+      <div class="sheet-handle"></div>
+      <div style="font-family:var(--ff);font-weight:800;font-size:16px;color:var(--t);margin-bottom:2px">🤖 AI Deep Dive</div>
+      <div style="font-size:11px;color:var(--o);font-family:var(--ff);margin-bottom:14px">${p.skill} · by ${u?.name||'Unknown'}</div>
+      <div class="dd-scroll">
+
+        <div class="dd-section">
+          <div class="dd-sec-hdr">🎯 SKILL KYA HAI</div>
+          <div class="dd-sec-body">${d.what||'—'}</div>
+        </div>
+
+        <div class="dd-section">
+          <div class="dd-sec-hdr">💼 CAREER OPPORTUNITIES</div>
+          <div class="dd-sec-body">${(d.careers||[]).map(c=>`<div class="dd-skill-tag">${c}</div>`).join('')}</div>
+        </div>
+
+        <div class="dd-section">
+          <div class="dd-sec-hdr">📚 KYA SEEKHNA CHAHIYE — ROADMAP</div>
+          <div class="dd-sec-body">${(d.learn||[]).map((s,i)=>`<div style="margin-bottom:7px;display:flex;gap:8px"><span style="color:var(--o);font-family:var(--ff);font-weight:700;flex-shrink:0">${i+1}.</span><span>${s}</span></div>`).join('')}</div>
+        </div>
+
+        <div class="dd-section">
+          <div class="dd-sec-hdr">🔗 RESOURCES</div>
+          <div class="dd-sec-body">${(d.resources||[]).map(r=>`<div style="margin-bottom:6px;padding-left:10px;border-left:2px solid var(--b2)">📌 ${r}</div>`).join('')}</div>
+        </div>
+
+        <div class="dd-section">
+          <div class="dd-sec-hdr">💰 EARNING POTENTIAL (INDIA)</div>
+          <div class="dd-sec-body">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+              <div><div style="font-size:9px;color:var(--t3);font-family:var(--ff);font-weight:700;margin-bottom:3px">ENTRY</div><div class="dd-earn" style="font-size:13px">${d.earning_min||'—'}</div></div>
+              <div style="border:1px solid var(--b2);border-radius:8px;padding:6px;background:var(--og2)"><div style="font-size:9px;color:var(--o);font-family:var(--ff);font-weight:700;margin-bottom:3px">MID</div><div class="dd-earn">${d.earning_mid||'—'}</div></div>
+              <div><div style="font-size:9px;color:var(--t3);font-family:var(--ff);font-weight:700;margin-bottom:3px">SENIOR</div><div class="dd-earn" style="font-size:13px">${d.earning_max||'—'}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dd-section" style="border-color:var(--b2)">
+          <div class="dd-sec-hdr" style="background:rgba(255,215,0,.07);border-color:rgba(255,215,0,.2);color:#FFD700">💡 PRO TIP</div>
+          <div class="dd-sec-body" style="color:var(--t)">${d.pro_tip||'—'}</div>
+        </div>
+
+      </div>
+      <button class="sheet-cancel" onclick="closeSheet()" style="margin-top:10px">Close</button>`;
+
+  }catch(e){
+    sc.innerHTML=`<div class="sheet-handle"></div>
+      <div style="font-family:var(--ff);font-weight:700;font-size:14px;color:var(--t);margin-bottom:10px">⚠️ Error</div>
+      <div style="font-size:12px;color:var(--t3)">Network error: ${e.message}</div>
+      <button class="sheet-cancel" onclick="closeSheet()" style="margin-top:12px">Close</button>`;
+  }
+}
+
+function aiInit(){
+  if(aiReady)return;aiReady=true;
+  setTimeout(()=>{
+    aiAddMsg('Hey! 👋 I\'m SkillSpark AI — I find skills you didn\'t know you had.<br><br><strong>What do you spend most of your time doing?</strong> (hobbies, work, side stuff — anything) 🎯','ai');
+  },300);
+}
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded',()=>{
-  renderCatPills();
-  document.querySelectorAll('.scr').forEach(s=>{ if(s.id!=='scr-loading') s.style.display='none'; });
-  $('nav').style.display='none';
+  loadDB();
+  document.getElementById('nav').style.display='none';
+  // intercept go('editprofile') to pre-fill
+  const origGo=window.go;
+  window.go=function(name){
+    origGo(name);
+    if(name==='editprofile') openEditProfile();
+  };
+  if(DB.currentUser && DB.users.find(u=>u.id===DB.currentUser)){
+    enterApp();
+  }
 });
-
 </script>
-</div>
-<div id="toast"></div>
-<input type="file" id="story-inp" accept="image/*" onchange="addStory(this)" style="display:none">
 </body>
 </html>
